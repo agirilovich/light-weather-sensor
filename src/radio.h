@@ -1,0 +1,2 @@
+void RadoInit();
+void RadioTransmit();
