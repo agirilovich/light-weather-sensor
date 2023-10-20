@@ -26,8 +26,8 @@ void RadoInit()
 void RadioTransmit()
 {
     byte tx_buf[sizeof(ActualData)] = {0};
-    memcpy(tx_buf, &ActualData, sizeof(myData) );
-    RadioDriver.send((uint8_t *)ActualData, strlen(ActualData));
+    memcpy(tx_buf, &ActualData, sizeof(ActualData));
+    RadioDriver.send((uint8_t *)tx_buf, sizeof(ActualData));
     RadioDriver.waitPacketSent();
     delay(1000);
 }

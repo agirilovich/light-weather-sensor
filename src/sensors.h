@@ -5,7 +5,7 @@ void SensorsInit();
 void SensorsRead();
 
 struct SensorsData {
-  char device_name;
+  const char* device_name;
   float  temperature;
   float  humidity;
   float  pressure;
