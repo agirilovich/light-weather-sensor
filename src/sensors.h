@@ -2,10 +2,9 @@
 
 void SensorsInit();
 
-void SensorsRead();
+void WeatherSensorRead();
 
 struct SensorsData {
-  const char* device_name;
   float  temperature;
   float  humidity;
   float  pressure;

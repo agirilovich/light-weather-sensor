@@ -2,32 +2,35 @@
 #include "sensors.h"
 
 #include <RH_ASK.h>
-#include <SPI.h> //is needed for compile
+//#include <SPI.h> //is needed for compile
 
 #define RADIO_RX_PIN PA5
 #define RADIO_TX_PIN PA6
+#define POWERUP_PIN PA7
 
-RH_ASK RadioDriver(2000, RADIO_RX_PIN, RADIO_TX_PIN, 0);
+RH_ASK RadioDriver(2000, RADIO_RX_PIN, RADIO_TX_PIN, POWERUP_PIN, false);
 
 void RadoInit()
 {
+    delay(1000);
     Serial.println("Initialize Radio Transmitter");
-    if (!RadioDriver.init())
-    {
-      Serial.println("init failed");
-    }
-    else {
-      Serial.println("Done");
-    }
+    RadioDriver.init();
+    Serial.println("Done");
+    
+    Serial.print("Maximal message lenght: ");
+    Serial.println(RadioDriver.maxMessageLength());
+    delay(1000);
 }
 
 
 
 void RadioTransmit()
 {
-    byte tx_buf[sizeof(ActualData)] = {0};
-    memcpy(tx_buf, &ActualData, sizeof(ActualData));
-    RadioDriver.send((uint8_t *)tx_buf, sizeof(ActualData));
-    RadioDriver.waitPacketSent();
-    delay(1000);
+  char MessageBuf[64];
+  sprintf(MessageBuf, "STM32Weather;%d;%d;%d;%d;", int(ActualData.temperature * 10), int(ActualData.humidity), int(ActualData.pressure), int(ActualData.light));
+  
+  Serial.println(MessageBuf);
+
+  RadioDriver.send((uint8_t *)MessageBuf, strlen(MessageBuf));
+  RadioDriver.waitPacketSent(1000);
 }

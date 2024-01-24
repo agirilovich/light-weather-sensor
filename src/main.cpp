@@ -1,12 +1,11 @@
 #include <Arduino.h>
 
-//#include <IWatchdog.h>
+#include <IWatchdog.h>
 
 #include "sensors.h"
 
 #include "radio.h"
 
-#include "STM32LowPower.h"
 
 #ifndef DEVICE_BOARD_NAME
 #  define DEVICE_BOARD_NAME "STM32OutdoorSensor"
@@ -14,69 +13,54 @@
 
 #define LED_PIN PC13
 
-#define POWERUP_PIN PA7
+void SensorTransmit() {
+  digitalWrite(LED_PIN, LOW);
+  
+  Serial.println("Transmit data via radio");
+  RadioTransmit();
 
-//char SensorCharMsg[256]; //message for transmit over RF
+  digitalWrite(LED_PIN, HIGH);
+ 
+}
 
 void setup() {
   // Debug console
   Serial.begin(115200);
  
   while (!Serial && millis() < 5000);
+
+  //Set witchdog timeout for 32 seconds
+  IWatchdog.begin(32000000); // set to maximum value
+  IWatchdog.reload();
   
-  /*
-  if (IWatchdog.isReset()) {
-    Serial.printf("Rebooted by Watchdog!\n");
-    delay(120 * 1000);
-    IWatchdog.clearReset(); 
-  }
-  */
-
-  // Configure low power
-  LowPower.begin();
-
+  delay(100);
+  Serial.print("Setting up Hardware Timer for Transmitting Sensors  values with period: ");
+  TIM_TypeDef *SensorsTimerInstance = TIM3;
+  HardwareTimer *SensorsThread = new HardwareTimer(SensorsTimerInstance);
+  SensorsThread->pause();
+  SensorsThread->setPrescaleFactor(65536);
+  //SensorsThread->setOverflow(224288);
+  Serial.print(SensorsThread->getOverflow() / (SensorsThread->getTimerClkFreq() / SensorsThread->getPrescaleFactor()));
+  Serial.println(" sec");
+  SensorsThread->refresh();
+  SensorsThread->resume();
+  SensorsThread->attachInterrupt(SensorTransmit);
+  
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, LOW);
+  digitalWrite(LED_PIN, HIGH);
 
   //PowerUp modules during init procedure
-  pinMode(POWERUP_PIN, OUTPUT);
-  digitalWrite(POWERUP_PIN, HIGH);
 
-  delay(500);
- 
   RadoInit();
   SensorsInit();
 
-  
-  /*
-  //Set witchdog timeout for 32 seconds
-  IWatchdog.begin(24000000); // set to maximum value
-  IWatchdog.reload();
-  
-  while (!IWatchdog.isEnabled()) {
-    // LED blinks indefinitely
-    digitalWrite(LED_PIN, LOW);
-    delay(500);
-    digitalWrite(LED_PIN, HIGH);
-    delay(500);
-  }
-
-  Serial.println("Watchdog enabled");
-
-  IWatchdog.reload();
-  */
 }
 
 void loop() {
-  //IWatchdog.reload();
-  digitalWrite(LED_PIN, HIGH);
-  digitalWrite(POWERUP_PIN, HIGH);
-  
-  SensorsRead();
-  RadioTransmit();
-
-  digitalWrite(LED_PIN, LOW);
-  digitalWrite(POWERUP_PIN, LOW);
-
-  LowPower.deepSleep(60000);
+  delay(200);
+  if ((ActualData.temperature < 100) && (ActualData.pressure < 2000) && (ActualData.light >= 0))
+  {
+    IWatchdog.reload();
+  } 
+  //LowPower.sleep(10000);
 }
