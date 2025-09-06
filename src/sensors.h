@@ -5,10 +5,11 @@ void SensorsInit();
 void WeatherSensorRead();
 
 struct SensorsData {
-  float  temperature;
+  float temperature;
   float  humidity;
-  float  pressure;
-  float  light;
+  double pressure;
+  float  wind;
+  bool   battery;
 };
 
 extern struct SensorsData ActualData;

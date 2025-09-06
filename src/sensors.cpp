@@ -4,66 +4,126 @@
 #  define DEVICE_BOARD_NAME "STM32OutdoorSensor"
 #endif
 
-struct SensorsData ActualData = {0, 0, 0, 0};
+struct SensorsData ActualData = {0, 0, 0, 0, false};
 
 #include <Wire.h>
-#include <SPI.h>
 
-TwoWire Wire2(PB9, PB8);
-TwoWire Wire3(PB11, PB10);
+TwoWire Wire1(PB9, PB8);
+//TwoWire Wire2(PB3, PB10);
 
-//#include <Adafruit_Sensor.h>
-//#include <Adafruit_BME280.h>
-//Adafruit_BME280 bme;
-#include <forcedClimate.h>
-ForcedClimate climateSensor = ForcedClimate(Wire2, 0x76);
+//BMP390 Pressure and temperature sensor
+#include <Adafruit_Sensor.h>
+#include "Adafruit_BMP3XX.h"
+
+Adafruit_BMP3XX bmp;
+
+//SHT41 Temperature and Humudity sensor
+#include <SensirionI2cSht4x.h>
+SensirionI2cSht4x sht;
 
 
-#include <BH1750.h>
-BH1750 lightMeter;
+//Wind speed sensor
+#define windpin PB5
+
+//Battery charger sensor
+#define chargerpin PB1
+
+
+uint32_t channel;
+volatile uint32_t FrequencyMeasured, LastCapture = 0, CurrentCapture;
+uint32_t input_freq = 0;
+volatile uint32_t rolloverCompareCount = 0;
+HardwareTimer *MyWindTim;
 
 #include <RunningAverage.h>
 #define ArrayLenght 20
-RunningAverage LightArray(ArrayLenght);
-RunningAverage TemperatureArray(ArrayLenght);
+
+RunningAverage Temperature1Array(ArrayLenght);
+RunningAverage Temperature2Array(ArrayLenght);
 RunningAverage HumidityArray(ArrayLenght);
 RunningAverage PressureArray(ArrayLenght);
+
+void InputCapture_Wind_callback(void)
+{
+  CurrentCapture = MyWindTim->getCaptureCompare(channel);
+  /* frequency computation */
+  if (CurrentCapture > LastCapture) {
+    FrequencyMeasured = input_freq / (CurrentCapture - LastCapture);
+  }
+  else if (CurrentCapture <= LastCapture) {
+    /* 0x1000 is max overflow value */
+    FrequencyMeasured = input_freq / (0x10000 + CurrentCapture - LastCapture);
+  }
+  LastCapture = CurrentCapture;
+  rolloverCompareCount = 0;
+}
+
+/* In case of timer rollover, frequency is to low to be measured set value to 0
+   To reduce minimum frequency, it is possible to increase prescaler. But this is at a cost of precision. */
+void Rollover_IT_callback(void)
+{
+  rolloverCompareCount++;
+
+  if (rolloverCompareCount > 1)
+  {
+    FrequencyMeasured = 0;
+  }
+}
 
 
 void SensorsInit()
 {
-  // Initialize the I2C bus (BH1750 library doesn't do this automatically)
-  Wire2.begin();
-  Wire3.begin();
+  // Initialize the I2C bus
+  Wire1.begin();
+  //Wire2.begin();
 
-  Serial.print("Setting up Hardware Timer for Reading Weather Sensors values with period: ");
-  TIM_TypeDef *WeatherSensorTimerInstance = TIM4;
-  HardwareTimer *WeatherSensorThread = new HardwareTimer(WeatherSensorTimerInstance);
+  
+  Serial.print("Setting up Hardware Timer for Reading Wind Speed Sensors: ");
+  TIM_TypeDef *TimerWindInstance = TIM5;
+  channel = STM_PIN_CHANNEL(pinmap_function(digitalPinToPinName(windpin), PinMap_PWM));
+  HardwareTimer *TimerWindThread = new HardwareTimer(TimerWindInstance);
+  TimerWindThread->setMode(channel, TIMER_INPUT_CAPTURE_RISING, windpin);
   WeatherSensorThread->pause();
-  WeatherSensorThread->setPrescaleFactor(65536);
-  WeatherSensorThread->setOverflow(8036);
+  TimerWindThread->setPrescaleFactor(65536);
+  TimerWindThread->setOverflow(0x10000);
+  TimerWindThread->attachInterrupt(channel, InputCapture_Wind_callback);
+  TimerWindThread->attachInterrupt(Rollover_IT_callback);
   Serial.print(WeatherSensorThread->getOverflow() / (WeatherSensorThread->getTimerClkFreq() / WeatherSensorThread->getPrescaleFactor()));
   Serial.println(" sec");
   WeatherSensorThread->refresh();
   WeatherSensorThread->resume();
-  WeatherSensorThread->attachInterrupt(WeatherSensorRead);
+  
+  
 
-  //initialise BME280 sensor on I2C bus
-  Serial.println(F("Initialise BME280"));
-  climateSensor.begin();
+  //Initialise BME390 sensor on I2C bus
+  Serial.println(F("Initialise BME390... "));
+  if (! bmp.begin_I2C(0x76, &Wire1)) {  
+    Serial.println("Could not find a valid BMP390 sensor, check wiring!");
+    while (1);
+  }
+  Serial.println("Done");
+
+  Serial.print("Configuring BME390...  ");
+  bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+  bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
+  bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
+  bmp.setOutputDataRate(BMP3_ODR_25_HZ);
   Serial.println("Done");
 
 
-  //Initialise light sensor
-  Serial.println(F("Initialise BH1750"));
-  if (lightMeter.begin(BH1750::ONE_TIME_HIGH_RES_MODE, 0x23, &Wire3)) {
+  //Initialise SHT41 sensor
+  Serial.print(F("Initialise SHT41....   "));
+  if (sht.begin(Wire, SHT40_I2C_ADDR_44);) {
     Serial.println(F("Done"));
+    sht.softReset();
   } else {
-    Serial.println(F("Error initialising BH1750"));
+    Serial.println(F("Error"));
   }
 
-  LightArray.clear();
-  TemperatureArray.clear();
+  pinMode(chargerpin, INPUT);
+
+  Temperature1Array.clear();
+  Temperature2Array.clear();
   HumidityArray.clear();
   PressureArray.clear();
 }
@@ -72,13 +132,27 @@ void SensorsInit()
 
 void WeatherSensorRead()
 {
-  climateSensor.takeForcedMeasurement();
+  if (! bmp.performReading()) {
+    Serial.println("Failed to perform reading BMP390");
+    return;
+  }
 
-  TemperatureArray.addValue(climateSensor.getTemperatureCelcius());
+  Temperature1Array.addValue(bmp.temperature);
   HumidityArray.addValue(climateSensor.getRelativeHumidity());
-  PressureArray.addValue(climateSensor.getPressure());
+  PressureArray.addValue(bmp.pressure / 100);
 
-  ActualData.temperature = TemperatureArray.getAverage();
+  float aTemperature = 0.0;
+  float aHumidity = 0.0;
+  if (! sht.measureLowestPrecision(aTemperature, aHumidity)) {
+    Serial.println("Failed to perform reading SHT41");
+    return;
+  }
+  Temperature2Array.addValue(aTemperature);
+  HumidityArray.addValue(aHumidity);
+
+  ActualData.battery = digitalRead(chargerpin);
+
+  ActualData.temperature = (Temperature1Array.getAverage() + Temperature2Array.getAverage()) / 2;
   ActualData.humidity = HumidityArray.getAverage();
   ActualData.pressure = PressureArray.getAverage();
 
@@ -89,16 +163,4 @@ void WeatherSensorRead()
   Serial.println(ActualData.humidity);
   Serial.print("Pressure: ");
   Serial.println(ActualData.pressure);
-
-  lightMeter.configure(BH1750::ONE_TIME_HIGH_RES_MODE);
-  while (!lightMeter.measurementReady(true)) {
-    yield();
-  }
-  float light = lightMeter.readLightLevel();
-
-  LightArray.addValue(light);
-  ActualData.light =  LightArray.getAverage();
-  Serial.print("Light: ");
-  Serial.print(light);
-  Serial.println(" lx");
 }
