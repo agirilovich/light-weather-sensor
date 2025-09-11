@@ -89,9 +89,9 @@ private:
     static int noise_score;
     static bool no_noise_fix;
     static int lost_packets;
-    static int64_t last_transition;
-    static hw_timer_t *transitionTimer;
-    static int64_t repeat_time_start;
+    static int32_t last_transition;
+    static HardwareTimer *transitionTimer;
+    static int32_t repeat_time_start;
     static long repeat_timeout;
     static bool rx_active_high;
     static bool tx_active_high;
@@ -100,13 +100,12 @@ private:
     static BufferPair loop_in;
     static BufferPair loop_compare;
     static BufferTriplet loop_ready;
-    static int64_t last_periodic;
+    static int32_t last_periodic;
     static void (*callback)(RawTimings, Pulsetrain, Meaning);
-    static void IRAM_ATTR ISR_transition();
-    static void IRAM_ATTR ISR_transitionTimeout();
-    static void IRAM_ATTR process_raw();
+    static void __attribute__((section(".RamFunc"))) ISR_transition();
+    static void __attribute__((section(".RamFunc"))) ISR_transitionTimeout();
+    static void __attribute__((section(".RamFunc"))) process_raw();
     static bool tryToBeNice(int ms);
-
 };
 
 #endif

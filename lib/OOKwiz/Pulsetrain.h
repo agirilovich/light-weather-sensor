@@ -32,9 +32,9 @@ public:
     /// @brief Total duration of this Pulsetrain in µs
     uint32_t duration = 0;
     /// @brief First seen at this time, in system microseconds
-    int64_t first_at = 0;
+    int32_t first_at = 0;
     /// @brief Last seen at this time, in system microseconds
-    int64_t last_at = 0;
+    int32_t last_at = 0;
     /// @brief Number of repetitions detected before either another packet came or `repeat_timeout` µs elapsed
     uint16_t repeats = 0;
     /// @brief Smallest gap between repeated transmissions 

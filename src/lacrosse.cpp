@@ -1,4 +1,5 @@
 #include "lacrosse.h"
+#include "sensors.h"
 
 /*
 * Message Format:
@@ -20,48 +21,74 @@
 
 // ------------------------------------ PACKET ENCODING ------------------------------------
 
-//void LaCrosse::EncodeFrame(uint8_t frame[], bool newBattery, float temperature, bool weakBattery, int humidity) {
-void LaCrosse::EncodeFrame(uint8_t frame[], SensorsData ActualData) {
+void LaCrosse::EncodeFrame(uint8_t *frame, int message_type) {
+  //convert transmitter ID
+  int id = SENSOR_ID;
+  int test_mode = SENSOR_TEST_MODE;
+  int chanel = CHANEL_ID;
 
-  // convert temperature in BCD format (temperature * 10 + 400)
-  byte tempBCD[3];
-  int temperatureValue = temperature * 10 + 400;
-  tempBCD[0] = temperatureValue / 100;
-  tempBCD[1] = (temperatureValue % 100) / 10;
-  tempBCD[2] = temperatureValue % 10;
+  int temperatureValue = ActualData.temperature * 10 + 500;
+  int windValue = ActualData.wind * 10;
+  int pressureValue = ActualData.pressure;
 
-  // first byte = length + 4 bits of Sensor ID
-  frame[0] = 0x90 | (SENSOR_ID >> 2);
+  frame[0] = (SENSOR_ID >> 16);
+  frame[1] = (SENSOR_ID & 0xFFFF) >> 8;
+  frame[2] = (SENSOR_ID & 0xFF);
+  frame[3] = (ActualData.battery << 7) | (test_mode << 6) | (chanel << 4) | (message_type);
+  
+  switch(message_type)
+  {
+    case MessageType::temperature:
+      frame[4] = temperatureValue >> 4;
+      frame[5] = ((temperatureValue & 0x0F) << 4) | (ActualData.humidity >> 8);
+      frame[6] = (ActualData.humidity & 0xFF);
+      break;
 
-  // second byte, 2 bits of sensor ID, newBattery indicator, unused bit and temperature
-  frame[1] = ((SENSOR_ID & 0x03) << 6) | (newBattery << 5) | (0 << 4) | (tempBCD[0] & 0xF);
+    case MessageType::wind:
+      frame[4] = windValue >> 4;
+      frame[5] = ((windValue & 0x0F) << 4) | (pressureValue >> 8);
+      frame[6] = (pressureValue & 0xFF);
+      break;
+  
+    default:
+      //unknown subtype
+      break;
+  }
 
-  // third byte, temperature
-  frame[2] = ((tempBCD[1] & 0xF) << 4) | (tempBCD[2] & 0xF);
-
-  // fourth byte, weakBattery and humidity
-  frame[3] = (weakBattery << 7) | (humidity & 0x7F);
+  //int8_t b[8] = frame[];
+  //frame[7] = crc8(b, 8, 0x31, 0x00);
+  frame[7] = crc8(frame, 8, 0x31, 0x00);
 }
 
 
-// ------------------------------------ CRC FUNCTIONS ------------------------------------
+//Calculate CRC function
+uint8_t LaCrosse::crc8(uint8_t const *message, unsigned nBytes, uint8_t polynomial, uint8_t init)
+{
+    uint8_t remainder = init;
+    unsigned byte, bit;
 
-byte LaCrosse::UpdateCRC(byte res, uint8_t val) {
-    for (int i = 0; i < 8; i++) {
-        uint8_t tmp = (uint8_t)((res ^ val) & 0x80);
-        res <<= 1;
-        if (0 != tmp) {
-            res ^= 0x31;
+    for (byte = 0; byte < nBytes; ++byte) {
+        remainder ^= message[byte];
+        for (bit = 0; bit < 8; ++bit) {
+            if (remainder & 0x80) {
+                remainder = (remainder << 1) ^ polynomial;
+            } else {
+                remainder = (remainder << 1);
+            }
         }
-        val <<= 1;
     }
-    return res;
+    return remainder;
 }
-byte LaCrosse::CalculateCRC(byte *data, byte len) {
-    byte res = 0;
-    for (int j = 0; j < len; j++) {
-        uint8_t val = data[j];
-        res = UpdateCRC(res, val);
-    }
-    return res;
+
+//Byte invert function
+void LaCrosse::FrameInvert(uint8_t *frame)
+{
+  uint8_t *b = frame;
+
+  const unsigned last_col  = 8;
+  const unsigned last_bits = 0;
+  for (unsigned col = 0; col <= last_col; ++col) {
+    b[col] = ~b[col]; // Invert
+  }
+  b[last_col] ^= 0xFF >> last_bits; // Re-invert unused bits in last byte
 }

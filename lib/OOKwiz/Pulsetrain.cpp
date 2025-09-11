@@ -6,6 +6,9 @@
 #include "tools.h"
 #include "serial_output.h"
 
+TIM_TypeDef *transitionTimerInstance = TIM1;
+HardwareTimer *transitionTimer = new HardwareTimer(transitionTimerInstance);
+
 // Note that anything marked IRAM_ATTR is used by the ISRs in OOKwiz.cpp and
 // SHALL NOT have Serial output
 
@@ -26,12 +29,12 @@ bool Pulsetrain::maybe(String str) {
 }
 
 /// @brief If you try to evaluate the instance as a bool (e.g. `if (myPulsetrain) ...`) this will be `true` if there's transitions stored.
-IRAM_ATTR Pulsetrain::operator bool() {
+__attribute__((section(".RamFunc"))) Pulsetrain::operator bool() {
     return (transitions.size() > 0);
 }
 
 /// @brief empty out all information about the stored pulses
-void IRAM_ATTR Pulsetrain::zap() {
+void __attribute__((section(".RamFunc"))) Pulsetrain::zap() {
     transitions.clear();
     bins.clear();
     gap = 0;
@@ -42,7 +45,7 @@ void IRAM_ATTR Pulsetrain::zap() {
 /// @brief Compare to other Pulsetrains to see if same packet. Ignores minor timing differences. Used internally by ISR processing to see if packet is a repeat.
 /// @param other_train Pulsetrain we're comparing this one to
 /// @return `true` if same, `false` if not
-bool IRAM_ATTR Pulsetrain::sameAs(const Pulsetrain &other_train) {
+bool __attribute__((section(".RamFunc"))) Pulsetrain::sameAs(const Pulsetrain &other_train) {
     if (transitions.size() != other_train.transitions.size()) {
         return false;
     }
@@ -165,7 +168,7 @@ String Pulsetrain::summary() const {
 /// @brief Convert RawTimings to Pulsetrain
 /// @param raw the RawTimings instance to convert from
 /// @return Always `true`
-bool IRAM_ATTR Pulsetrain::fromRawTimings(const RawTimings &raw) {
+bool __attribute__((section(".RamFunc"))) Pulsetrain::fromRawTimings(const RawTimings &raw) {
     int bin_width;
     SETTING_WITH_DEFAULT(bin_width, 150);
     // First copy the intervals and sort them
@@ -202,8 +205,8 @@ bool IRAM_ATTR Pulsetrain::fromRawTimings(const RawTimings &raw) {
         }
     }
     // Set other metadata about this Pulsetrain
-    first_at = esp_timer_get_time();
-    last_at = esp_timer_get_time();
+    first_at = transitionTimer->getCount();
+    last_at = transitionTimer->getCount();
     repeats = 1;
     return true;
 }

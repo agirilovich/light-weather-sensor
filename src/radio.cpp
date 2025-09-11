@@ -1,6 +1,7 @@
 #include <OOKwiz.h>
 #include "sensors.h"
 #include "radio.h"
+#include "lacrosse.h"
 
 
 void RadoInit()
@@ -12,7 +13,6 @@ void RadoInit()
   Settings::set("pin_reset", RESET_PIN);
   Settings::set("pin_irq", IRQ_PIN);
   Settings::set("pin_cs", NSS_PIN);
-  Settings::set("spi_port", SPIClass SPI_PORT);
   Settings::set("pin_rx", RX_PIN);
   Settings::set("pin_tx", TX_PIN);
   //Lower power usage mode than in receive
@@ -29,28 +29,36 @@ void RadoInit()
 
 void LaCrosseTransmit()
 {
-  
-  uint8_t frame[4];
-  LaCrosse::EncodeFrame(frame, ActualData);
-  uint8_t packet[FRAME_LENGTH];
-  for(int i = 0; i < 4; i++) packet[i] = frame[i];
-  packet[4] = LaCrosse::CalculateCRC(frame, 4);
-  RadioTransmit(packet)
-  
+  uint8_t frame[FRAME_LENGTH];
   char MessageBuf[64];
-  sprintf(MessageBuf, "STM32Weather;%d;%d;%d;%d;", int(ActualData.temperature * 10), int(ActualData.humidity), int(ActualData.pressure), int(ActualData.light));
-  
-  Serial.println(MessageBuf);
+  for (int type = 0; type <= 1; ++type)
+  {
+    LaCrosse::EncodeFrame(frame, type);
+    if(FRAME_INVERT)
+    {
+      LaCrosse::FrameInvert(frame);
+    }
 
-  if (OOKwiz::setup()) {
-    Settings::set("tx_high_power", true);
-    Meaning newPacket; 
-    newPacket.addPulse(5900);
-    uint8_t data[3] = {0x17, 0x72, 0xA4};
-    // 190 and 575 are space and mark timings, 24 is data length in bits
-    newPacket.addPWM(190, 575, 24, data);
-    newPacket.repeats = 6;
-    newPacket.gap = 130;    
-    OOKwiz::transmit(newPacket);
+    sprintf(MessageBuf, "STM32Weather; %.2f C; %d; %.1f Pa; %.1f km/h; %d", ActualData.temperature, ActualData.humidity, ActualData.pressure, ActualData.wind, ActualData.battery);
+    Serial.println(MessageBuf);
+
+    if (OOKwiz::setup()) {
+      Settings::set("tx_high_power", true);
+      Meaning newPacket;
+      //Preamble
+      for (int preambl_count = 0; preambl_count <= 4; ++preambl_count)
+      {
+        newPacket.addPulse(833);
+        newPacket.addGap(833);
+      }
+
+      //Data
+      newPacket.addPWM(208, 417, 64, frame);
+
+      //Repeat transmission few times
+      newPacket.repeats = 6;
+      newPacket.gap = 1700;    
+      OOKwiz::transmit(newPacket);
+    }
   }
 }

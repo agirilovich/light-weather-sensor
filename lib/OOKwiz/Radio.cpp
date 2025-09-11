@@ -159,31 +159,12 @@ void Radio::radiolibInit() {
     SETTING_WITH_DEFAULT(pin_mosi, -1);
     int pin_reset;
     SETTING_WITH_DEFAULT(pin_reset, -1);
-    String spi_port;
-    SETTING_WITH_DEFAULT(spi_port, "HSPI");
-    int spi_port_int = -1;
-    if (spi_port == "HSPI") {
-        spi_port_int = HSPI;
-    } else if (spi_port == "FSPI") {
-        spi_port_int = FSPI;
-    }
-    #ifdef VSPI
-        else if (spi_port == "VSPI") {
-            spi_port_int = VSPI;
-        }
-    #endif
-    else {
-        ERROR("SPI port '%s' unknown, trying default SPI.\n", spi_port.c_str());
-    }
-    if (spi_port_int != -1 && pin_miso != -1 && pin_mosi != -1 && pin_sck != -1) {
-        INFO("Radio %s: SPI port %s, SCK %i, MISO %i, MOSI %i, CS %i, RESET %i, RX %i, TX %i\n", name().c_str(), spi_port.c_str(), pin_sck, pin_miso, pin_mosi, pin_cs, pin_reset, pin_rx, pin_tx);
-        spi = new SPIClass(spi_port_int);
-        spi->begin(pin_sck, pin_miso, pin_mosi, pin_cs);
-        radioLibModule = new Module(pin_cs, pin_irq, pin_reset, -1, *spi);
-    } else {
-        INFO("Radio %s: default SPI, SCK %i, MISO %i, MOSI %i, CS %i, RESET %i, RX %i, TX %i\n", name().c_str(), SCK, MISO, MOSI, pin_cs, pin_reset, pin_rx, pin_tx);
-        radioLibModule = new Module(pin_cs, pin_irq, pin_reset, -1);
-    }
+
+    INFO("Radio %s: SCK %i, MISO %i, MOSI %i, CS %i, RESET %i, RX %i, TX %i\n", name().c_str(), pin_sck, pin_miso, pin_mosi, pin_cs, pin_reset, pin_rx, pin_tx);
+    spi = new SPIClass(pin_mosi, pin_miso, pin_sck, pin_cs);
+    spi->begin();
+
+    radioLibModule = new Module(pin_cs, pin_irq, pin_reset, -1, *spi);
     INFO("%s: Frequency: %.2f Mhz, bandwidth %.1f kHz, bitrate %.3f kbps\n", name().c_str(), frequency, bandwidth, bitrate);
 }
 

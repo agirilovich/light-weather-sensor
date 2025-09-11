@@ -13,9 +13,11 @@ const int dataRate = 17241;
 #define RX_PIN PB15
 #define TX_PIN PA9
 #define IRQ_PIN PA8
-#define SPI_PORT SPI2
+#define PLUGIN_NAME RF69
 
 
-#define FRAME_LENGTH 5
+#define FRAME_LENGTH 8
+#define FRAME_INVERT true
 
 void LaCrosseTransmit();
+void RadoInit();

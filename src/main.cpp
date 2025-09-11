@@ -1,11 +1,10 @@
 #include <Arduino.h>
 
 #include <IWatchdog.h>
-#include "STM32LowPower.h"
+#include <STM32LowPower.h>
 
 #include "sensors.h"
 #include "radio.h"
-#include "lacrosse.h"
 
 #ifndef DEVICE_BOARD_NAME
 #  define DEVICE_BOARD_NAME "STM32OutdoorSensor"
@@ -77,14 +76,16 @@ void setup() {
   RadoInit();
   SensorsInit();
 
+  LowPower.begin();
+
 }
 
 void loop() {
   IWatchdog.reload();
   if (!ActualData.battery)
   {
-    STM32LowPower::deepSleep(28 * 1000);
+    LowPower.deepSleep(28 * 1000);
   } else {
-    STM32LowPower::sleep();
+    LowPower.sleep();
   }
 }

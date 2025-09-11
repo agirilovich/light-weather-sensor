@@ -13,9 +13,9 @@ int OOKwiz::noise_threshold;
 int OOKwiz::noise_score;
 bool OOKwiz::no_noise_fix = false;
 int OOKwiz::lost_packets = 0;
-int64_t OOKwiz::last_transition;
-hw_timer_t* OOKwiz::transitionTimer = nullptr;
-int64_t OOKwiz::repeat_time_start = 0;
+int32_t OOKwiz::last_transition;
+HardwareTimer* OOKwiz::transitionTimer = nullptr;
+int32_t OOKwiz::repeat_time_start = 0;
 long OOKwiz::repeat_timeout;
 bool OOKwiz::rx_active_high;
 bool OOKwiz::tx_active_high;
@@ -24,7 +24,7 @@ RawTimings OOKwiz::isr_out;
 BufferPair OOKwiz::loop_in;
 BufferPair OOKwiz::loop_compare;
 BufferTriplet OOKwiz::loop_ready;
-int64_t OOKwiz::last_periodic = 0;
+int32_t OOKwiz::last_periodic = 0;
 void (*OOKwiz::callback)(RawTimings, Pulsetrain, Meaning) = nullptr;
 
 /// @brief Starts OOKwiz. Loads settings, initializes the radio and starts receiving if it finds the appropriate settings.
@@ -62,11 +62,14 @@ bool OOKwiz::setup() {
     tx_active_high = Settings::isSet("tx_active_high");
 
     // Timer for pulse_gap_len_new_packet
-    transitionTimer = timerBegin(0, 80, true);
-    timerAttachInterrupt(transitionTimer, &ISR_transitionTimeout, false);
-    timerAlarmWrite(transitionTimer, pulse_gap_len_new_packet, true);
-    timerAlarmEnable(transitionTimer);
-    timerStart(transitionTimer);
+    TIM_TypeDef *transitionTimerInstance = TIM1;
+    HardwareTimer *transitionTimer = new HardwareTimer(transitionTimerInstance);
+    transitionTimer->pause();
+    transitionTimer->setPrescaleFactor(transitionTimer->getTimerClkFreq());
+    transitionTimer->attachInterrupt(ISR_transitionTimeout);
+    transitionTimer->setOverflow(pulse_gap_len_new_packet);
+    transitionTimer->refresh();
+    transitionTimer->resume();
 
     // The ISR that actually reads the data
     attachInterrupt(Radio::pin_rx, ISR_transition, CHANGE);    
@@ -79,9 +82,9 @@ bool OOKwiz::setup() {
 
 }
 
-void IRAM_ATTR OOKwiz::ISR_transition() {
-    int64_t t = esp_timer_get_time() - last_transition;
-    last_transition = esp_timer_get_time();
+void __attribute__((section(".RamFunc"))) OOKwiz::ISR_transition() {
+    int32_t t = transitionTimer->getCount() - last_transition;
+    last_transition = transitionTimer->getCount();
     if (rx_state == RX_WAIT_PREAMBLE) {
         // Set the state machine to put the transitions in isr_in
         if (t > first_pulse_min_len && digitalRead(Radio::pin_rx) != rx_active_high) {
@@ -109,16 +112,18 @@ void IRAM_ATTR OOKwiz::ISR_transition() {
         }
 
     }
-    timerRestart(transitionTimer);
+    transitionTimer->pause();
+    transitionTimer->refresh();
+    transitionTimer->resume();
 }
 
-void IRAM_ATTR OOKwiz::ISR_transitionTimeout() {
+void __attribute__((section(".RamFunc"))) OOKwiz::ISR_transitionTimeout() {
     if (rx_state != RX_OFF) {
         process_raw();
     }
 }
 
-void IRAM_ATTR OOKwiz::process_raw() {
+void __attribute__((section(".RamFunc"))) OOKwiz::process_raw() {
     if (!isr_out) {
         isr_out = isr_in;
     } else {
@@ -289,7 +294,7 @@ bool OOKwiz::transmit(RawTimings &raw) {
     INFO("Transmitting: %s\n", raw.toString().c_str());
     INFO("              %s\n", raw.visualizer().c_str());    
     delay(100);     // So INFO prints before we turn off interrupts
-    int64_t tx_timer = esp_timer_get_time();
+    int32_t tx_timer = transitionTimer->getCount();
     noInterrupts();
     {
         bool bit = tx_active_high;
@@ -302,7 +307,7 @@ bool OOKwiz::transmit(RawTimings &raw) {
         PIN_WRITE(Radio::pin_tx, !tx_active_high);    // Just to make sure we end with TX off
     }
     interrupts();
-    tx_timer = esp_timer_get_time() - tx_timer;
+    tx_timer = transitionTimer->getCount() - tx_timer;
     INFO("Transmission done, took %i µs.\n", tx_timer);
     delayMicroseconds(400);
     // return to state it was in before transmit
@@ -332,7 +337,7 @@ bool OOKwiz::transmit(Pulsetrain &train) {
     INFO("Transmitting %s\n", train.toString().c_str());
     INFO("             %s\n", train.visualizer().c_str()); 
     delay(100);     // So INFO prints before we turn off interrupts
-    int64_t tx_timer = esp_timer_get_time();
+    int32_t tx_timer = transitionTimer->getCount();
     for (int repeat = 0; repeat < train.repeats; repeat++) {
         noInterrupts();
         {
@@ -349,7 +354,7 @@ bool OOKwiz::transmit(Pulsetrain &train) {
         interrupts();
         delayMicroseconds(train.gap);
     }
-    tx_timer = esp_timer_get_time() - tx_timer;
+    tx_timer = transitionTimer->getCount() - tx_timer;
     INFO("Transmission done, took %i µs.\n", tx_timer);
     delayMicroseconds(400);
     // return to state it was in before transmit

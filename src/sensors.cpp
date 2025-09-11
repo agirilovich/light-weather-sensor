@@ -83,15 +83,15 @@ void SensorsInit()
   channel = STM_PIN_CHANNEL(pinmap_function(digitalPinToPinName(windpin), PinMap_PWM));
   HardwareTimer *TimerWindThread = new HardwareTimer(TimerWindInstance);
   TimerWindThread->setMode(channel, TIMER_INPUT_CAPTURE_RISING, windpin);
-  WeatherSensorThread->pause();
+  TimerWindThread->pause();
   TimerWindThread->setPrescaleFactor(65536);
   TimerWindThread->setOverflow(0x10000);
   TimerWindThread->attachInterrupt(channel, InputCapture_Wind_callback);
   TimerWindThread->attachInterrupt(Rollover_IT_callback);
-  Serial.print(WeatherSensorThread->getOverflow() / (WeatherSensorThread->getTimerClkFreq() / WeatherSensorThread->getPrescaleFactor()));
+  Serial.print(TimerWindThread->getOverflow() / (TimerWindThread->getTimerClkFreq() / TimerWindThread->getPrescaleFactor()));
   Serial.println(" sec");
-  WeatherSensorThread->refresh();
-  WeatherSensorThread->resume();
+  TimerWindThread->refresh();
+  TimerWindThread->resume();
   
   
 
@@ -113,12 +113,8 @@ void SensorsInit()
 
   //Initialise SHT41 sensor
   Serial.print(F("Initialise SHT41....   "));
-  if (sht.begin(Wire, SHT40_I2C_ADDR_44);) {
-    Serial.println(F("Done"));
-    sht.softReset();
-  } else {
-    Serial.println(F("Error"));
-  }
+  sht.begin(Wire, SHT40_I2C_ADDR_44);
+  Serial.println(F("Done"));
 
   pinMode(chargerpin, INPUT);
 
@@ -138,7 +134,6 @@ void WeatherSensorRead()
   }
 
   Temperature1Array.addValue(bmp.temperature);
-  HumidityArray.addValue(climateSensor.getRelativeHumidity());
   PressureArray.addValue(bmp.pressure / 100);
 
   float aTemperature = 0.0;
