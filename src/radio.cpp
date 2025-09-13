@@ -15,6 +15,7 @@ void RadoInit()
   Settings::set("pin_cs", NSS_PIN);
   Settings::set("pin_rx", RX_PIN);
   Settings::set("pin_tx", TX_PIN);
+  Settings::set("radio", RADIO_NAME);
   //Lower power usage mode than in receive
   Settings::set("start_in_standby", true);
   //Set high transmission power as default

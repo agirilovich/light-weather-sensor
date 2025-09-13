@@ -12,33 +12,18 @@
 
 #define LED_PIN PC13
 
-void SensorTransmit() {
-  digitalWrite(LED_PIN, LOW);
-  
-  Serial.println("Transmit data via radio");
-  LaCrosseTransmit();
-
-  digitalWrite(LED_PIN, HIGH);
- 
-}
-
 void setup() {
   // Debug console
   Serial.begin(115200);
  
   while (!Serial && millis() < 5000);
 
- // Debug console
-  Serial.begin(115200);
-
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
-
-  while (!Serial && millis() < 5000);
-
+  
   if (IWatchdog.isReset()) {
     Serial.printf("Rebooted by Watchdog!\n");
-    delay(60 * 1000);
+    delay(20 * 1000);
     IWatchdog.clearReset(); 
   }
 
@@ -56,18 +41,7 @@ void setup() {
   
   delay(100);
 
-  Serial.print("Setting up Hardware Timer for Transmitting Sensors  values with period: ");
-  TIM_TypeDef *SensorsTimerInstance = TIM3;
-  HardwareTimer *SensorsThread = new HardwareTimer(SensorsTimerInstance);
-  SensorsThread->pause();
-  SensorsThread->setPrescaleFactor(65536);
-  //SensorsThread->setOverflow(4294967295);
-  Serial.print(SensorsThread->getOverflow() / (SensorsThread->getTimerClkFreq() / SensorsThread->getPrescaleFactor()));
-  Serial.println(" sec");
-  SensorsThread->refresh();
-  SensorsThread->resume();
-  SensorsThread->attachInterrupt(SensorTransmit);
-  
+ 
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
 
@@ -78,14 +52,36 @@ void setup() {
 
   LowPower.begin();
 
+  /*
+  Serial.print("Setting up Hardware Timer for Watchdog reload with period: ");
+  TIM_TypeDef *WatchdogTimerInstance = TIM3;
+  HardwareTimer *WatchdogThread = new HardwareTimer(WatchdogTimerInstance);
+  WatchdogThread->pause();
+  WatchdogThread->setPrescaleFactor(16384);
+  Serial.print(WatchdogThread->getOverflow() / (WatchdogThread->getTimerClkFreq() / WatchdogThread->getPrescaleFactor()));
+  Serial.println(" sec");
+  WatchdogThread->refresh();
+  WatchdogThread->attachInterrupt(WatchdogReload);
+  WatchdogThread->resume();
+  */
+  
+  delay(1000);
+  Serial.flush();
 }
 
 void loop() {
+  digitalWrite(LED_PIN, LOW);
+  WeatherSensorRead();
+  LaCrosseTransmit();
+  delay(250);
+  digitalWrite(LED_PIN, HIGH);
   IWatchdog.reload();
-  if (!ActualData.battery)
+  
+  if (ActualData.battery = 1)
   {
-    LowPower.deepSleep(28 * 1000);
+    //LowPower.begin();
+    LowPower.deepSleep(12000);
   } else {
-    LowPower.sleep();
+    LowPower.sleep(8000);
   }
 }

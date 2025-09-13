@@ -97,7 +97,7 @@ void SensorsInit()
 
   //Initialise BME390 sensor on I2C bus
   Serial.println(F("Initialise BME390... "));
-  if (! bmp.begin_I2C(0x76, &Wire1)) {  
+  if (! bmp.begin_I2C(0x77, &Wire1)) {  
     Serial.println("Could not find a valid BMP390 sensor, check wiring!");
     while (1);
   }
@@ -113,10 +113,10 @@ void SensorsInit()
 
   //Initialise SHT41 sensor
   Serial.print(F("Initialise SHT41....   "));
-  sht.begin(Wire, SHT40_I2C_ADDR_44);
+  sht.begin(Wire1, SHT41_I2C_ADDR_44);
   Serial.println(F("Done"));
 
-  pinMode(chargerpin, INPUT);
+  pinMode(chargerpin, INPUT_PULLUP);
 
   Temperature1Array.clear();
   Temperature2Array.clear();
@@ -128,6 +128,7 @@ void SensorsInit()
 
 void WeatherSensorRead()
 {
+  Serial.println("Reading sensors...");
   if (! bmp.performReading()) {
     Serial.println("Failed to perform reading BMP390");
     return;
@@ -138,10 +139,8 @@ void WeatherSensorRead()
 
   float aTemperature = 0.0;
   float aHumidity = 0.0;
-  if (! sht.measureLowestPrecision(aTemperature, aHumidity)) {
-    Serial.println("Failed to perform reading SHT41");
-    return;
-  }
+  sht.measureLowestPrecision(aTemperature, aHumidity);
+
   Temperature2Array.addValue(aTemperature);
   HumidityArray.addValue(aHumidity);
 
@@ -151,11 +150,16 @@ void WeatherSensorRead()
   ActualData.humidity = HumidityArray.getAverage();
   ActualData.pressure = PressureArray.getAverage();
 
-
+  /*
+  Serial.println("-------------------------------------------------------------------");
   Serial.print("Temperature: ");
   Serial.println(ActualData.temperature);
   Serial.print("Humidity: ");
   Serial.println(ActualData.humidity);
   Serial.print("Pressure: ");
   Serial.println(ActualData.pressure);
+  Serial.print("Battery: ");
+  Serial.println(ActualData.battery);
+  Serial.println("-------------------------------------------------------------------");
+  */
 }

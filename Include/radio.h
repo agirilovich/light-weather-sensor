@@ -9,11 +9,11 @@ const int dataRate = 17241;
 #define MISO_PIN PB14
 #define MOSI_PIN PB15
 #define RESET_PIN PA9
-#define NSS_PIN PB15
-#define RX_PIN PB15
-#define TX_PIN PA9
+#define NSS_PIN PB12
+#define RX_PIN PA10
+#define TX_PIN PA10
 #define IRQ_PIN PA8
-#define PLUGIN_NAME RF69
+#define RADIO_NAME "RF69"
 
 
 #define FRAME_LENGTH 8
