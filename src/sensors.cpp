@@ -22,18 +22,9 @@ Adafruit_BMP3XX bmp;
 SensirionI2cSht4x sht;
 
 
-//Wind speed sensor
-#define windpin PB5
-
 //Battery charger sensor
 #define chargerpin PB1
 
-
-uint32_t channel;
-volatile uint32_t FrequencyMeasured, LastCapture = 0, CurrentCapture;
-uint32_t input_freq = 0;
-volatile uint32_t rolloverCompareCount = 0;
-HardwareTimer *MyWindTim;
 
 #include <RunningAverage.h>
 #define ArrayLenght 20
@@ -43,57 +34,77 @@ RunningAverage Temperature2Array(ArrayLenght);
 RunningAverage HumidityArray(ArrayLenght);
 RunningAverage PressureArray(ArrayLenght);
 
-void InputCapture_Wind_callback(void)
-{
-  CurrentCapture = MyWindTim->getCaptureCompare(channel);
-  /* frequency computation */
-  if (CurrentCapture > LastCapture) {
-    FrequencyMeasured = input_freq / (CurrentCapture - LastCapture);
-  }
-  else if (CurrentCapture <= LastCapture) {
-    /* 0x1000 is max overflow value */
-    FrequencyMeasured = input_freq / (0x10000 + CurrentCapture - LastCapture);
-  }
-  LastCapture = CurrentCapture;
-  rolloverCompareCount = 0;
-}
+//Wind measure section
+float windscaler = WIND_FREQ_KNOT_SCALER;
 
-/* In case of timer rollover, frequency is to low to be measured set value to 0
-   To reduce minimum frequency, it is possible to increase prescaler. But this is at a cost of precision. */
-void Rollover_IT_callback(void)
-{
-  rolloverCompareCount++;
+TIM_TypeDef *WindTimerInstance = TIM3;
+HardwareTimer *WindTimerThread = new HardwareTimer(WindTimerInstance);
 
-  if (rolloverCompareCount > 1)
+extern "C" {
+  #include "stm32f4xx_hal.h"
+
+  TIM_HandleTypeDef htim2;
+  
+  static void MX_TIM2_Init(void)
   {
-    FrequencyMeasured = 0;
+    TIM_SlaveConfigTypeDef sSlaveConfig = {0};
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+    htim2.Instance = TIM2;
+    htim2.Init.Prescaler = 0;
+    htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+    htim2.Init.Period = 0xffff;
+    htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    htim2.Init.RepetitionCounter = 0;
+    htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    sSlaveConfig.SlaveMode = TIM_SLAVEMODE_EXTERNAL1;
+    sSlaveConfig.InputTrigger = TIM_TS_ETRF;
+    sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
+    sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_NONINVERTED;
+    sSlaveConfig.TriggerFilter = 15;
+    if (HAL_TIM_SlaveConfigSynchro(&htim2, &sSlaveConfig) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    if (HAL_TIM_OC_Init(&htim2) != HAL_OK)
+    {
+      Error_Handler();
+    }
+  }
+
+  static void Base_MspInit(void)
+  {
+    GPIO_InitTypeDef   GPIO_InitStruct;
+    __TIM2_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    GPIO_InitStruct.Pin = GPIO_PIN_0;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   }
 }
-
 
 void SensorsInit()
 {
   // Initialize the I2C bus
   Wire1.begin();
   //Wire2.begin();
-
-  
-  Serial.print("Setting up Hardware Timer for Reading Wind Speed Sensors: ");
-  TIM_TypeDef *TimerWindInstance = TIM5;
-  channel = STM_PIN_CHANNEL(pinmap_function(digitalPinToPinName(windpin), PinMap_PWM));
-  HardwareTimer *TimerWindThread = new HardwareTimer(TimerWindInstance);
-  TimerWindThread->setMode(channel, TIMER_INPUT_CAPTURE_RISING, windpin);
-  TimerWindThread->pause();
-  TimerWindThread->setPrescaleFactor(65536);
-  TimerWindThread->setOverflow(0x10000);
-  TimerWindThread->attachInterrupt(channel, InputCapture_Wind_callback);
-  TimerWindThread->attachInterrupt(Rollover_IT_callback);
-  Serial.print(TimerWindThread->getOverflow() / (TimerWindThread->getTimerClkFreq() / TimerWindThread->getPrescaleFactor()));
-  Serial.println(" sec");
-  TimerWindThread->refresh();
-  TimerWindThread->resume();
-  
-  
 
   //Initialise BME390 sensor on I2C bus
   Serial.println(F("Initialise BME390... "));
@@ -122,6 +133,18 @@ void SensorsInit()
   Temperature2Array.clear();
   HumidityArray.clear();
   PressureArray.clear();
+
+
+  Serial.print("Setting up Hardware Timers for wind sensor");
+  WindTimerThread->pause();
+  WindTimerThread->setPrescaleFactor(32768);
+  WindTimerThread->refresh();
+
+  MX_TIM2_Init();
+  Base_MspInit();
+
+  HAL_TIM_Base_Start(&htim2);
+  WindTimerThread->resume();
 }
 
 
@@ -149,6 +172,18 @@ void WeatherSensorRead()
   ActualData.temperature = (Temperature1Array.getAverage() + Temperature2Array.getAverage()) / 2;
   ActualData.humidity = HumidityArray.getAverage();
   ActualData.pressure = PressureArray.getAverage();
+  
+  WindTimerThread->pause();
+  HAL_TIM_Base_Stop(&htim2);
+
+  uint32_t current_cnt = __HAL_TIM_GET_COUNTER(&htim2);
+  ActualData.wind = current_cnt * windscaler;
+
+  WindTimerThread->refresh();
+  HAL_TIM_GenerateEvent(&htim2, TIM_EVENTSOURCE_UPDATE);
+
+  WindTimerThread->resume();
+  HAL_TIM_Base_Start(&htim2);
 
   /*
   Serial.println("-------------------------------------------------------------------");

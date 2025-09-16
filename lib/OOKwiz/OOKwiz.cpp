@@ -27,14 +27,7 @@ BufferTriplet OOKwiz::loop_ready;
 int32_t OOKwiz::last_periodic = 0;
 void (*OOKwiz::callback)(RawTimings, Pulsetrain, Meaning) = nullptr;
 
-/// @brief Starts OOKwiz. Loads settings, initializes the radio and starts receiving if it finds the appropriate settings.
-/**
- * If you set the GPIO pin for a button on your ESP32 in 'pin_rescue' and press it during boot, OOKwiz will not
- * initialize SPI and the radio, possibly breaking an endless boot loop. Set 'rescue_active_high' if the button
- * connects to VCC instead of GND.
- * 
- * Normally, OOKwiz will start up in receive mode. If you set 'start_in_standby', it will start in standby mode instead.
-*/
+
 /// @return true if setup succeeded, false if it could not complete, e.g. because the radio is not configured yet.
 bool OOKwiz::setup() {
 
@@ -133,30 +126,6 @@ void __attribute__((section(".RamFunc"))) OOKwiz::process_raw() {
     rx_state = RX_WAIT_PREAMBLE;
 }
 
-/// @brief Use this to supply your own function that will be called every time a packet is received.
-/**
- * The callback_function parameter has to be the function name of a function that takes the three 
- * packet representations as arguments and does not return anything. Here's an example sketch:
- * 
- * ```
- * setup() {
- *     Serial.begin(115200);
- *     OOKwiz::setup();
- *     OOKwiz::onReceive(myReceiveFunction);
- * }
- * 
- * loop() {
- *     OOKwiz::loop();
- * }
- * 
- * void myReceiveFunction(RawTimings raw, Pulsetrain train, Meaning meaning) {
- *     Serial.println("A packet was received and myReceiveFunction was called.");
- * }
- * ```
- * 
- * Make sure your own function is defined exactly as like this, even if you don't need all the
- * parameters. You may change the names of the function and the parameters, but nothing else. 
-*/
 /// @param callback_function The name of your own function, without parenthesis () after it. 
 /// @return always returns `true`
 bool OOKwiz::onReceive(void (*callback_function)(RawTimings, Pulsetrain, Meaning)) {

@@ -16,6 +16,7 @@ void RadoInit()
   Settings::set("pin_rx", RX_PIN);
   Settings::set("pin_tx", TX_PIN);
   Settings::set("radio", RADIO_NAME);
+  Settings::set("errorlevel", ERROR_LEVEL);
   //Lower power usage mode than in receive
   Settings::set("start_in_standby", true);
   //Set high transmission power as default
@@ -40,26 +41,25 @@ void LaCrosseTransmit()
       LaCrosse::FrameInvert(frame);
     }
 
-    sprintf(MessageBuf, "STM32Weather; %.2f C; %d; %.1f Pa; %.1f km/h; %d", ActualData.temperature, ActualData.humidity, ActualData.pressure, ActualData.wind, ActualData.battery);
+    sprintf(MessageBuf, "STM32Weather; %.2f C; %d %%; %.1f Pa; %.1f km/h; %d", ActualData.temperature, ActualData.humidity, ActualData.pressure, ActualData.wind, ActualData.battery);
     Serial.println(MessageBuf);
 
-    if (OOKwiz::setup()) {
-      Settings::set("tx_high_power", true);
-      Meaning newPacket;
-      //Preamble
-      for (int preambl_count = 0; preambl_count <= 4; ++preambl_count)
-      {
-        newPacket.addPulse(833);
-        newPacket.addGap(833);
-      }
-
-      //Data
-      newPacket.addPWM(208, 417, 64, frame);
-
-      //Repeat transmission few times
-      newPacket.repeats = 6;
-      newPacket.gap = 1700;    
-      OOKwiz::transmit(newPacket);
+    Settings::set("tx_high_power", true);
+    Meaning newPacket;
+    //Preamble
+    for (int preambl_count = 0; preambl_count <= 4; ++preambl_count)
+    {
+      newPacket.addPulse(833);
+      newPacket.addGap(833);
     }
+
+    //Data
+    newPacket.addPWM(208, 417, 64, frame);
+
+    //Repeat transmission few times
+    newPacket.repeats = 6;
+    newPacket.gap = 1700;    
+    OOKwiz::transmit(newPacket);
+    OOKwiz::standby();
   }
 }

@@ -23,7 +23,7 @@ void setup() {
   
   if (IWatchdog.isReset()) {
     Serial.printf("Rebooted by Watchdog!\n");
-    delay(20 * 1000);
+    delay(15 * 1000);
     IWatchdog.clearReset(); 
   }
 
@@ -79,9 +79,16 @@ void loop() {
   
   if (ActualData.battery = 1)
   {
-    //LowPower.begin();
-    LowPower.deepSleep(12000);
+    #ifndef LOWPOWER_DEBUG
+      LowPower.deepSleep(12000);
+    #elif LOWPOWER_DEBUG
+      delay(12000);
+    #endif
   } else {
-    LowPower.sleep(8000);
+    #ifndef LOWPOWER_DEBUG
+      LowPower.sleep(8000);
+    #elif LOWPOWER_DEBUG
+      delay(8000);
+    #endif
   }
 }
