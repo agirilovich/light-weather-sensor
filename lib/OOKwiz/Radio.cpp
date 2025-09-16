@@ -161,7 +161,8 @@ void Radio::radiolibInit() {
     SETTING_WITH_DEFAULT(pin_reset, -1);
 
     INFO("Radio %s: SCK %i, MISO %i, MOSI %i, CS %i, RESET %i, RX %i, TX %i\n", name().c_str(), pin_sck, pin_miso, pin_mosi, pin_cs, pin_reset, pin_rx, pin_tx);
-    spi = new SPIClass(pin_mosi, pin_miso, pin_sck, pin_cs);
+    //spi = new SPIClass(pin_mosi, pin_miso, pin_sck, pin_cs);
+    spi = new SPIClass(pin_mosi, pin_miso, pin_sck);
     spi->begin();
 
     radioLibModule = new Module(pin_cs, pin_irq, pin_reset, -1, *spi);
