@@ -13,10 +13,9 @@ void RadoInit()
   Settings::set("pin_reset", RESET_PIN);
   Settings::set("pin_irq", IRQ_PIN);
   Settings::set("pin_cs", NSS_PIN);
-  Settings::set("pin_rx", RX_PIN);
   Settings::set("pin_tx", TX_PIN);
   Settings::set("radio", RADIO_NAME);
-  Settings::set("tx_active_high", false);
+  //Settings::set("tx_active_high", false);
   Settings::set("errorlevel", ERROR_LEVEL);
   //Lower power usage mode than in receive
   Settings::set("start_in_standby", true);

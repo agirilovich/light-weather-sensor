@@ -10,11 +10,16 @@
 #  define DEVICE_BOARD_NAME "STM32OutdoorSensor"
 #endif
 
+#define LED_PIN PC13
+
 void setup() {
   // Debug console
   Serial.begin(115200);
  
   while (!Serial && millis() < 5000);
+
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);
 
   if (IWatchdog.isReset()) {
     Serial.printf("Rebooted by Watchdog!\n");
@@ -27,6 +32,10 @@ void setup() {
   IWatchdog.reload();
 
   while (!IWatchdog.isEnabled()) {
+    // LED blinks indefinitely
+    digitalWrite(LED_PIN, LOW);
+    delay(500);
+    digitalWrite(LED_PIN, HIGH);
     delay(500);
   }
   
@@ -57,9 +66,11 @@ void setup() {
 }
 
 void loop() {
+  digitalWrite(LED_PIN, LOW);
   WeatherSensorRead();
   LaCrosseTransmit();
   delay(250);
+  digitalWrite(LED_PIN, HIGH);
   IWatchdog.reload();
   
   if (ActualData.battery = 1)

@@ -8,7 +8,6 @@
 decltype(Radio::store) Radio::store;
 int Radio::len = 0;
 Radio* Radio::current = nullptr;
-int Radio::pin_rx;
 int Radio::pin_tx;
 
 /// @brief Registers an instance of Radio, i.e. a radio plugin in the static `store`
@@ -83,22 +82,8 @@ String Radio::name() {
 bool Radio::radio_init() {
     CHECK_RADIO_SET;
     INFO("Initializing radio.\n");
-    pin_rx = Settings::getInt("pin_rx");
     pin_tx = Settings::getInt("pin_tx");
     return current->init();
-}
-
-/// @brief Static, called as `Radio::radio_rx()`, will call overridden `rx()` in plugin
-/// @return whatever plugin's `rx()` returns, or `false` if no radio is selected or no `pin_rx` set
-bool Radio::radio_rx() {
-    CHECK_RADIO_SET;
-    DEBUG("Configuring radio for receiving.\n");
-    if (pin_rx < 0) {
-        ERROR("ERROR: pin_rx needs to be set receive.\n");
-        return false;
-    }
-    PIN_MODE(pin_rx, INPUT);
-    return current->rx();
 }
 
 /// @brief Static, called as `Radio::radio_tx()`, will call overridden `tx()` in plugin
@@ -131,12 +116,6 @@ bool Radio::init() {
 
 /// @brief virtual, to be overridden by each plugin
 /// @return `false` if not overridden
-bool Radio::rx() {
-    return false;
-}
-
-/// @brief virtual, to be overridden by each plugin
-/// @return `false` if not overridden
 bool Radio::tx() {
     return false;
 }
@@ -160,7 +139,7 @@ void Radio::radiolibInit() {
     int pin_reset;
     SETTING_WITH_DEFAULT(pin_reset, -1);
 
-    INFO("Radio %s: SCK %i, MISO %i, MOSI %i, CS %i, RESET %i, RX %i, TX %i\n", name().c_str(), pin_sck, pin_miso, pin_mosi, pin_cs, pin_reset, pin_rx, pin_tx);
+    INFO("Radio %s: SCK %i, MISO %i, MOSI %i, CS %i, RESET %i, TX %i\n", name().c_str(), pin_sck, pin_miso, pin_mosi, pin_cs, pin_reset, pin_tx);
     //spi = new SPIClass(pin_mosi, pin_miso, pin_sck, pin_cs);
     spi = new SPIClass(pin_mosi, pin_miso, pin_sck);
     spi->begin();

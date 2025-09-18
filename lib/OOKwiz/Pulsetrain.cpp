@@ -6,8 +6,8 @@
 #include "tools.h"
 #include "serial_output.h"
 
-TIM_TypeDef *transitionTimerInstance = TIM1;
-HardwareTimer *transitionTimer = new HardwareTimer(transitionTimerInstance);
+//TIM_TypeDef *transitionTimerInstance = TIM1;
+//HardwareTimer *transitionTimer = new HardwareTimer(transitionTimerInstance);
 
 // Note that anything marked IRAM_ATTR is used by the ISRs in OOKwiz.cpp and
 // SHALL NOT have Serial output
@@ -205,8 +205,8 @@ bool __attribute__((section(".RamFunc"))) Pulsetrain::fromRawTimings(const RawTi
         }
     }
     // Set other metadata about this Pulsetrain
-    first_at = transitionTimer->getCount();
-    last_at = transitionTimer->getCount();
+    //first_at = transitionTimer->getCount();
+    //last_at = transitionTimer->getCount();
     repeats = 1;
     return true;
 }

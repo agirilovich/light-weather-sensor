@@ -60,19 +60,16 @@ public:
     } store[MAX_RADIOS];
     static Radio* current;
     static int len;
-    static int pin_rx;
     static int pin_tx;
     static bool add(const char* name, Radio *pointer);
     static bool setup();
     static bool select(const String &name);
     static String list(String separator = ", ");
     static bool radio_init();
-    static bool radio_rx();
     static bool radio_tx();
     static bool radio_standby();
     String name();
     virtual bool init();
-    virtual bool rx();
     virtual bool tx();
     virtual bool standby();
 

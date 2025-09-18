@@ -59,25 +59,14 @@ class OOKwiz {
 
 public:
     static bool setup();
-    static bool receive();
-    static bool onReceive(void (*callback_function)(RawTimings, Pulsetrain, Meaning));
     static bool standby();
-    static bool simulate(String &str);
-    static bool simulate(RawTimings &raw);
-    static bool simulate(Pulsetrain &train);
-    static bool simulate(Meaning &meaning);
+    static bool sleep();
     static bool transmit(String &str);
     static bool transmit(RawTimings &raw);
     static bool transmit(Pulsetrain &train);
     static bool transmit(Meaning &meaning);
 
 private:
-    static volatile enum Rx_State{
-        RX_OFF,
-        RX_WAIT_PREAMBLE,
-        RX_RECEIVING_DATA,
-        RX_PROCESSING
-    } rx_state;
     static bool serial_cli_disable;
     static int first_pulse_min_len;
     static int pulse_gap_min_len;
@@ -90,10 +79,8 @@ private:
     static bool no_noise_fix;
     static int lost_packets;
     static int32_t last_transition;
-    static HardwareTimer *transitionTimer;
     static int32_t repeat_time_start;
     static long repeat_timeout;
-    static bool rx_active_high;
     static bool tx_active_high;
     static RawTimings isr_in;
     static RawTimings isr_out;
@@ -102,10 +89,6 @@ private:
     static BufferTriplet loop_ready;
     static int32_t last_periodic;
     static void (*callback)(RawTimings, Pulsetrain, Meaning);
-    static void __attribute__((section(".RamFunc"))) ISR_transition();
-    static void __attribute__((section(".RamFunc"))) ISR_transitionTimeout();
-    static void __attribute__((section(".RamFunc"))) process_raw();
-    static bool tryToBeNice(int ms);
 };
 
 #endif

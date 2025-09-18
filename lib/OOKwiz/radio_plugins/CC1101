@@ -20,11 +20,6 @@ bool init() override {
     return true;
 }
 
-bool rx() override {
-    RADIO_DO(receiveDirectAsync());
-    return true;
-}
-
 bool tx() override {
     int tx_power;
     SETTING_WITH_DEFAULT(tx_power, 10);

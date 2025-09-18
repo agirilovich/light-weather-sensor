@@ -24,7 +24,6 @@ bool init() override {
     INFO("%s: Transmit power set to %i dBm, using %s pin.\n", QUOTE(PLUGIN_NAME), tx_power, Settings::isSet("tx_use_rfo") ? "RFO" : "PA_BOOST");
     RADIO_DO(beginFSK());
     RADIO_DO(setFrequency(frequency));
-    RADIO_DO(setRxBandwidth(bandwidth));
     RADIO_DO(setBitRate(bitrate));
     RADIO_DO(setOOK(true));
     RADIO_DO(setCrcFiltering(false));
@@ -37,11 +36,6 @@ bool init() override {
     MODULE_DO(SPIsetRegValue(RADIOLIB_SX127X_REG_PREAMBLE_DETECT, RADIOLIB_SX127X_PREAMBLE_DETECTOR_OFF));
     RADIO_DO(setDirectSyncWord(0, 0));
     RADIO_DO(disableBitSync());
-    return true;
-}
-
-bool rx() override {
-    RADIO_DO(receiveDirect());
     return true;
 }
 

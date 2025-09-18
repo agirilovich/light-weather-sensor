@@ -34,12 +34,6 @@ bool init() override {
     return true;
 }
 
-bool rx() override {
-    RADIO_DO(receiveDirect());
-    RADIO_DO(disableContinuousModeBitSync());
-    return true;
-}
-
 bool tx() override {
     int tx_power;
     SETTING_WITH_DEFAULT(tx_power, 13);
