@@ -57,6 +57,7 @@ bool OOKwiz::setup() {
     transitionTimer->pause();
     transitionTimer->setPrescaleFactor(transitionTimer->getTimerClkFreq() / 1000000);
     //transitionTimer->setOverflow(pulse_gap_len_new_packet);
+    transitionTimer->setOverflow(0xFFFF);
     transitionTimer->resume();
 
     return standby();

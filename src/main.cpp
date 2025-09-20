@@ -48,19 +48,6 @@ void setup() {
 
   LowPower.begin();
 
-  /*
-  Serial.print("Setting up Hardware Timer for Watchdog reload with period: ");
-  TIM_TypeDef *WatchdogTimerInstance = TIM3;
-  HardwareTimer *WatchdogThread = new HardwareTimer(WatchdogTimerInstance);
-  WatchdogThread->pause();
-  WatchdogThread->setPrescaleFactor(16384);
-  Serial.print(WatchdogThread->getOverflow() / (WatchdogThread->getTimerClkFreq() / WatchdogThread->getPrescaleFactor()));
-  Serial.println(" sec");
-  WatchdogThread->refresh();
-  WatchdogThread->attachInterrupt(WatchdogReload);
-  WatchdogThread->resume();
-  */
-  
   delay(1000);
   Serial.flush();
 }
@@ -68,7 +55,7 @@ void setup() {
 void loop() {
   digitalWrite(LED_PIN, LOW);
   WeatherSensorRead();
-  LaCrosseTransmit();
+  LaCrosseTransmit(1);
   delay(250);
   digitalWrite(LED_PIN, HIGH);
   IWatchdog.reload();

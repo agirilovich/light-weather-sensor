@@ -19,14 +19,20 @@
 * https://github.com/merbanan/rtl_433/blob/master/src/devices/lacrosse_tx35.c
 */
 
-// ------------------------------------ PACKET ENCODING ------------------------------------
+LaCrosse(){};
+
+// Inserts a signal into the commmand list
+void ISM_Device::insert(SIGNAL_T signal)
+{
+  cmdList[listEnd++] = signal;
+  return;
+}
 
 void LaCrosse::EncodeFrame(uint8_t *frame, int message_type) {
   //convert transmitter ID
   int id = SENSOR_ID;
   int test_mode = SENSOR_TEST_MODE;
-  int chanel = CHANEL_ID;
-
+  
   int temperatureValue = ActualData.temperature * 10 + 500;
   int windValue = ActualData.wind * 10;
   int pressureValue = ActualData.pressure;
