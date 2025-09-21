@@ -6,6 +6,9 @@
 #define TX_PIN PA15
 #define IRQ_PIN PA8
 
+#define HIGH_POWER true
+#define TX_POWER 13
+
 #define FRAME_LENGTH 8
 #define REPEATS 6
 
@@ -38,34 +41,34 @@ class Radio {
         static bool standby();
         static bool sleep();
         static void Transmit(uint8_t type);
-        SIGNAL_T cmdList[300];
-        SIGNAL *signals;
-        SIGNAL TX141TH_signals[6];
+        static SIGNAL_T cmdList[300];
+        static SIGNAL *signals;
+        static SIGNAL TX141TH_signals[6];
 
     private:
-        static int pin_sck=SCK_PIN;
-        static int pin_miso=MISO_PIN;
-        static int pin_mosi=MOSI_PIN;
-        static int pin_reset=RESET_PIN;
-        static int pin_irq=IRQ_PIN;
-        static int pin_cs=NSS_PIN;
-        static int pin_tx=TX_PIN;
-        static int threshold_type=RADIOLIB_RF69_OOK_THRESH_FIXED;
-        static int threshold_level=6;
-        static int tx_power=13;
-        static int tx_repeats=REPEATS;
-        static float frequency=433.92;
-        static float bandwidth=250;
-        static float bitrate=9.6;
+        static int pin_sck;
+        static int pin_miso;
+        static int pin_mosi;
+        static int pin_reset;
+        static int pin_irq;
+        static int pin_cs;
+        static int pin_tx;
+        static int threshold_type;
+        static int threshold_level;
+        static int tx_power;
+        static bool tx_high_power;
+        static int tx_repeats;
+        static float frequency;
+        static float bandwidth;
+        static float bitrate;
         static TIM_TypeDef *transitionTimerInstance;
         static HardwareTimer *transitionTimer;
-        SPIClass* spi;
-        // radiolib-specific
-        Module* radioLibModule;
+        static SPIClass* spi;
+        //static Module* radioLibModule;
+        static RF69 *RF69_Radio_Module;
 
-        uint16_t listEnd = 0;
-        String Device_Name = "LaCrosse Device";
-        void insert(SIGNAL_T signal);
-        void make_wave(uint8_t *msg, uint8_t msgLen);
+        static uint16_t listEnd;
+        static void insert(SIGNAL_T signal);
+        static void make_wave(uint8_t *msg, uint8_t msgLen);
         static bool tx();
 };

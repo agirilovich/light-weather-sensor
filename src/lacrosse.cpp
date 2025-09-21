@@ -19,16 +19,9 @@
 * https://github.com/merbanan/rtl_433/blob/master/src/devices/lacrosse_tx35.c
 */
 
-LaCrosse(){};
+int LaCrosse::chanel=SENSOR_CHANEL;
 
-// Inserts a signal into the commmand list
-void ISM_Device::insert(SIGNAL_T signal)
-{
-  cmdList[listEnd++] = signal;
-  return;
-}
-
-void LaCrosse::EncodeFrame(uint8_t *frame, int message_type) {
+void __attribute__((section(".RamFunc"))) LaCrosse::EncodeFrame(uint8_t *frame, int message_type) {
   //convert transmitter ID
   int id = SENSOR_ID;
   int test_mode = SENSOR_TEST_MODE;
@@ -40,7 +33,7 @@ void LaCrosse::EncodeFrame(uint8_t *frame, int message_type) {
   frame[0] = (SENSOR_ID >> 16);
   frame[1] = (SENSOR_ID & 0xFFFF) >> 8;
   frame[2] = (SENSOR_ID & 0xFF);
-  frame[3] = (ActualData.battery << 7) | (test_mode << 6) | (chanel << 4) | (message_type);
+  frame[3] = (ActualData.low_battery << 7) | (test_mode << 6) | (chanel << 4) | (message_type);
   
   switch(message_type)
   {
@@ -68,7 +61,7 @@ void LaCrosse::EncodeFrame(uint8_t *frame, int message_type) {
 
 
 //Calculate CRC function
-uint8_t LaCrosse::crc8(uint8_t const *message, unsigned nBytes, uint8_t polynomial, uint8_t init)
+uint8_t __attribute__((section(".RamFunc"))) LaCrosse::crc8(uint8_t const *message, unsigned nBytes, uint8_t polynomial, uint8_t init)
 {
     uint8_t remainder = init;
     unsigned byte, bit;
@@ -87,7 +80,7 @@ uint8_t LaCrosse::crc8(uint8_t const *message, unsigned nBytes, uint8_t polynomi
 }
 
 //Byte invert function
-void LaCrosse::FrameInvert(uint8_t *frame)
+void __attribute__((section(".RamFunc"))) LaCrosse::FrameInvert(uint8_t *frame)
 {
   uint8_t *b = frame;
 

@@ -23,7 +23,7 @@ class LaCrosse {
         static void FrameInvert(uint8_t *frame);
 
     private:
-        int chanel=SENSOR_CHANEL;
+        static int chanel;
 };
 
 #endif

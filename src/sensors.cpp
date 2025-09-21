@@ -167,7 +167,7 @@ void WeatherSensorRead()
   Temperature2Array.addValue(aTemperature);
   HumidityArray.addValue(aHumidity);
 
-  ActualData.battery = digitalRead(chargerpin);
+  ActualData.low_battery = digitalRead(chargerpin);
 
   ActualData.temperature = (Temperature1Array.getAverage() + Temperature2Array.getAverage()) / 2;
   ActualData.humidity = HumidityArray.getAverage();
@@ -194,7 +194,7 @@ void WeatherSensorRead()
   Serial.print("Pressure: ");
   Serial.println(ActualData.pressure);
   Serial.print("Battery: ");
-  Serial.println(ActualData.battery);
+  Serial.println(ActualData.low_battery);
   Serial.println("-------------------------------------------------------------------");
   */
 }

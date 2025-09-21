@@ -9,7 +9,7 @@ struct SensorsData {
   int    humidity;
   double pressure;
   float  wind;
-  bool   battery;
+  bool   low_battery;
 };
 
 extern struct SensorsData ActualData;

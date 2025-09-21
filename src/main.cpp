@@ -43,7 +43,7 @@ void setup() {
 
   //PowerUp modules during init procedure
 
-  RadoInit();
+  Radio::setup();
   SensorsInit();
 
   LowPower.begin();
@@ -55,20 +55,22 @@ void setup() {
 void loop() {
   digitalWrite(LED_PIN, LOW);
   WeatherSensorRead();
-  LaCrosseTransmit(1);
+  Radio::Transmit(1);
   delay(250);
   digitalWrite(LED_PIN, HIGH);
   IWatchdog.reload();
   
-  if (ActualData.battery = 1)
+  if (ActualData.low_battery = 1)
   {
     #ifndef LOWPOWER_DEBUG
+      Radio::sleep();
       LowPower.deepSleep(12000);
     #elif LOWPOWER_DEBUG
       delay(12000);
     #endif
   } else {
     #ifndef LOWPOWER_DEBUG
+      Radio::standby();
       LowPower.sleep(8000);
     #elif LOWPOWER_DEBUG
       delay(8000);
