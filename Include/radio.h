@@ -41,9 +41,8 @@ class Radio {
         static bool standby();
         static bool sleep();
         static void Transmit(uint8_t type);
-        static SIGNAL_T cmdList[300];
-        static SIGNAL *signals;
-        static SIGNAL TX141TH_signals[6];
+        static SIGNAL_T cmdList[500];
+        static SIGNAL signals[6];
 
     private:
         static int pin_sck;
@@ -61,8 +60,7 @@ class Radio {
         static float frequency;
         static float bandwidth;
         static float bitrate;
-        static TIM_TypeDef *transitionTimerInstance;
-        static HardwareTimer *transitionTimer;
+
         static SPIClass* spi;
         //static Module* radioLibModule;
         static RF69 *RF69_Radio_Module;

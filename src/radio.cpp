@@ -2,8 +2,6 @@
 #include "radio.h"
 #include "lacrosse.h"
 
-//TIM_TypeDef Radio::transitionTimerInstance = TIM1;
-
 int Radio::pin_sck=SCK_PIN;
 int Radio::pin_miso=MISO_PIN;
 int Radio::pin_mosi=MOSI_PIN;
@@ -20,22 +18,27 @@ float Radio::frequency=433.92;
 float Radio::bandwidth=250;
 float Radio::bitrate=9.6;
 
-SIGNAL_T Radio::cmdList[300];
-SIGNAL* Radio::signals;
-
-TIM_TypeDef* Radio::transitionTimerInstance = TIM1;
-HardwareTimer* Radio::transitionTimer;
-SPIClass* Radio::spi;
-RF69* Radio::RF69_Radio_Module;
-
-SIGNAL Radio::TX141TH_signals[6] = {
+SIGNAL_T Radio::cmdList[500];
+SIGNAL Radio::signals[6] = {
+  /*
   {SIG_SYNC, "Sync", 712, 936},
-  {SIG_SYNC_GAP, "Sync-gap", 0, 168},
   {SIG_ZERO, "Zero", 348, 348},
   {SIG_ONE, "One", 136, 544},
   {SIG_IM_GAP, "IM_gap", 0, 10004},
-  {SIG_PULSE, "Pulse", 512, 512} // spare
+  */
+  {SIG_SYNC, "Sync", 833, 833},
+  {SIG_SYNC_GAP, "Sync-gap", 0, 168},
+  {SIG_ZERO, "Zero", 417, 208},
+  //{SIG_ZERO, "Zero", 348, 348},
+  {SIG_ONE, "One", 208, 417},
+  //{SIG_ONE, "One", 136, 544},
+  {SIG_IM_GAP, "IM_gap", 0, 1700},
+  //{SIG_IM_GAP, "IM_gap", 0, 10004},
+  {SIG_PULSE, "Pulse", 512, 512}
 };
+
+SPIClass* Radio::spi;
+RF69* Radio::RF69_Radio_Module;
 
 uint16_t Radio::listEnd = 0;
 
@@ -50,14 +53,6 @@ bool Radio::setup() {
 
   pinMode(pin_tx, OUTPUT);
 
-  // Timer for pulse_gap_len_new_packet
-  transitionTimer = new HardwareTimer(transitionTimerInstance);
-  transitionTimer->pause();
-  transitionTimer->setPrescaleFactor(transitionTimer->getTimerClkFreq() / 1000000);
-  //transitionTimer->setOverflow(pulse_gap_len_new_packet);
-  transitionTimer->setOverflow(0xFFFF);
-  transitionTimer->resume();
-
   Serial.println("Done");
   return true;
 }
@@ -66,7 +61,6 @@ bool Radio::RF69_init()
 {
   Serial.printf("Radio %s: SCK %i, MISO %i, MOSI %i, CS %i, RESET %i, TX %i\n", "RF69", pin_sck, pin_miso, pin_mosi, pin_cs, pin_reset, pin_tx);
 
-  //spi = new SPIClass(pin_mosi, pin_miso, pin_sck, pin_cs);
   spi = new SPIClass(pin_mosi, pin_miso, pin_sck);
   spi->begin();
 
@@ -99,22 +93,24 @@ bool __attribute__((section(".RamFunc"))) Radio::sleep() {
 void __attribute__((section(".RamFunc"))) Radio::Transmit(uint8_t type)
 {
   uint8_t frame[FRAME_LENGTH];
-  char MessageBuf[64];
+  char MessageBuf[FRAME_LENGTH * 8];
   LaCrosse::EncodeFrame(frame, type);
   LaCrosse::FrameInvert(frame);
 
   #ifdef LOWPOWER_DEBUG
-    Serial.print("Frame:  ");
+    sprintf(MessageBuf, "STM32Weather; %.2f C; %d %%; %.1f Pa; %.1f km/h; %d", ActualData.temperature, ActualData.humidity, ActualData.pressure, ActualData.wind, ActualData.low_battery);
+    Serial.println(MessageBuf);
+    Serial.print("Encoded Frame:  ");
     for(int i = 0; i < FRAME_LENGTH; i++) {
       Serial.print(frame[i]);
       Serial.print(" ");
     }
     Serial.println("");
-    sprintf(MessageBuf, "STM32Weather; %.2f C; %d %%; %.1f Pa; %.1f km/h; %d", ActualData.temperature, ActualData.humidity, ActualData.pressure, ActualData.wind, ActualData.low_battery);
-    Serial.println(MessageBuf);
+    Serial.printf("Transmitting... Chanel: %d, Message type: %d \n", LaCrosse::chanel, type);
   #endif
-    
-  make_wave(frame, FRAME_LENGTH);
+
+  make_wave(frame, FRAME_LENGTH * 8);
+   
   tx();
 }
 
@@ -122,9 +118,7 @@ bool __attribute__((section(".RamFunc"))) Radio::tx() {
   delay(100);     // So INFO prints before we turn off interrupts
   RF69_Radio_Module->setOutputPower(tx_power, tx_high_power);
   RF69_Radio_Module->transmitDirect();
-  transitionTimer->refresh();
-  transitionTimer->resume();
-  int32_t tx_timer = transitionTimer->getCount();
+
   noInterrupts();
 
   {
@@ -149,8 +143,6 @@ bool __attribute__((section(".RamFunc"))) Radio::tx() {
   }
 
   interrupts();
-  tx_timer = transitionTimer->getCount() - tx_timer;
-  Serial.printf("Transmission done, took %i µs.\n", tx_timer);
   delayMicroseconds(400);
   standby();
   return true;
@@ -176,20 +168,9 @@ void Radio::make_wave(uint8_t *msg, uint8_t msgLen)
     insert(SIG_SYNC);
     insert(SIG_SYNC);
 
-    // The data packet
-    if (first)
-    {
-      Serial.println(F("The msg packet, length="));
-      Serial.println((int)msgLen);
-      Serial.println(F(", as a series of bits: "));
-    }
     for (uint8_t i = 0; i < msgLen; i++)
     {
       insert(((uint8_t)((msg[i / 8] >> (7 - (i % 8))) & 0x01)) == 0 ? SIG_ZERO : SIG_ONE);
-      if (first)
-      {
-        Serial.println(((msg[i / 8] >> (7 - (i % 8))) & 0x01));
-      }
     }
     if (first)
     {
