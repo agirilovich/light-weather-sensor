@@ -1,24 +1,6 @@
 #include "lacrosse.h"
 #include "sensors.h"
 
-/*
-* Message Format:
-*
-* .- [0] -. .- [1] -. .- [2] -. .- [3] -. .- [4] -.
-* SSSS.DDDD DDN_.TTTT TTTT.TTTT WHHH.HHHH CCCC.CCCC
-* |  | |     ||  |  | |  | |  | ||      | |       |
-* |  | |     ||  |  | |  | |  | ||      | `--------- CRC
-* |  | |     ||  |  | |  | |  | |`-------- humidity%
-* |  | |     ||  |  | |  | |  | `---- weak battery
-* |  | |     ||  `--------------- Temperature BCD, T = X/10-40
-* |  | |     | `--- new battery
-* |  | `-------- sensor ID
-* `---- start byte
-*
-* more details:
-* https://github.com/merbanan/rtl_433/blob/master/src/devices/lacrosse_tx35.c
-*/
-
 int LaCrosse::chanel=SENSOR_CHANEL;
 
 void __attribute__((section(".RamFunc"))) LaCrosse::EncodeFrame(uint8_t *frame, int message_type) {
@@ -29,11 +11,12 @@ void __attribute__((section(".RamFunc"))) LaCrosse::EncodeFrame(uint8_t *frame, 
   int temperatureValue = ActualData.temperature * 10 + 500;
   int windValue = ActualData.wind * 10;
   int pressureValue = ActualData.pressure;
- 
+  
   frame[0] = ((SENSOR_ID >> 16) | 0x08);
   frame[1] = (SENSOR_ID & 0xFFFF) >> 8;
   frame[2] = (SENSOR_ID & 0xFF);
   frame[3] = (ActualData.low_battery << 7) | (test_mode << 6) | (chanel << 4) | (message_type);
+
   
   switch(message_type)
   {

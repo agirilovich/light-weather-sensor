@@ -41,7 +41,7 @@ class Radio {
         static bool standby();
         static bool sleep();
         static void Transmit(uint8_t type);
-        static SIGNAL_T cmdList[500];
+        static SIGNAL_T cmdList[600];
         static SIGNAL signals[6];
 
     private:

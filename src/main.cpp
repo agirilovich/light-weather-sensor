@@ -71,18 +71,12 @@ void loop() {
   
   if (ActualData.low_battery = 1)
   {
-    #ifndef LOWPOWER_DEBUG
-      Radio::sleep();
-      LowPower.deepSleep(24000);
-    #elif LOWPOWER_DEBUG
+      //Radio::sleep();
+      //LowPower.deepSleep(24000);
       delay(12000);
-    #endif
   } else {
-    #ifndef LOWPOWER_DEBUG
-      Radio::standby();
-      LowPower.sleep(28000);
-    #elif LOWPOWER_DEBUG
+      //Radio::standby();
+      //LowPower.sleep(28000);
       delay(8000);
-    #endif
   }
 }

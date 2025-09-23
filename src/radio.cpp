@@ -2,6 +2,8 @@
 #include "radio.h"
 #include "lacrosse.h"
 
+#define TIMER TIM4
+
 int Radio::pin_sck=SCK_PIN;
 int Radio::pin_miso=MISO_PIN;
 int Radio::pin_mosi=MOSI_PIN;
@@ -18,7 +20,7 @@ float Radio::frequency=433.92;
 float Radio::bandwidth=250;
 float Radio::bitrate=9.6;
 
-SIGNAL_T Radio::cmdList[500];
+SIGNAL_T Radio::cmdList[600];
 SIGNAL Radio::signals[6] = {
   /*
   {SIG_SYNC, "Sync", 712, 936},
@@ -33,7 +35,7 @@ SIGNAL Radio::signals[6] = {
   {SIG_ONE, "One", 208, 417},
   //{SIG_ONE, "One", 136, 544},
   {SIG_IM_GAP, "IM_gap", 0, 1700},
-  //{SIG_IM_GAP, "IM_gap", 0, 10004},
+  //{SIG_IM_GAP, "IM_gap", 0, 100},
   {SIG_PULSE, "Pulse", 512, 512}
 };
 
@@ -41,6 +43,53 @@ SPIClass* Radio::spi;
 RF69* Radio::RF69_Radio_Module;
 
 uint16_t Radio::listEnd = 0;
+
+extern "C" {
+  #include "stm32f4xx_hal.h"
+
+  TIM_HandleTypeDef HTIMx;
+  uint32_t gu32_ticks;
+
+  void TimerDelay_Init(void)
+  {
+    gu32_ticks = (HAL_RCC_GetHCLKFreq() / 1000000);
+    
+ 
+    TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+    TIM_MasterConfigTypeDef sMasterConfig = {0};
+ 
+    HTIMx.Instance = TIMER;
+    HTIMx.Init.Prescaler = gu32_ticks-1;
+    HTIMx.Init.CounterMode = TIM_COUNTERMODE_UP;
+    HTIMx.Init.Period = 65535;
+    HTIMx.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    HTIMx.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+    if (HAL_TIM_Base_Init(&HTIMx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+    if (HAL_TIM_ConfigClockSource(&HTIMx, &sClockSourceConfig) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+    if (HAL_TIMEx_MasterConfigSynchronization(&HTIMx, &sMasterConfig) != HAL_OK)
+    {
+      Error_Handler();
+    }
+ 
+    HAL_TIM_Base_Start(&HTIMx);
+  }
+ 
+  void delay_us(uint16_t au16_us)
+  {
+    HTIMx.Instance->CNT = 0;
+    while (HTIMx.Instance->CNT < au16_us);
+  }
+}
+
 
 bool Radio::setup() {
   Serial.println("Initialize Radio Transmitter");
@@ -52,6 +101,8 @@ bool Radio::setup() {
   }
 
   pinMode(pin_tx, OUTPUT);
+
+  TimerDelay_Init();
 
   Serial.println("Done");
   return true;
@@ -133,11 +184,13 @@ bool __attribute__((section(".RamFunc"))) Radio::tx() {
       }
       if (signals[sig].up_time > 0) {
         digitalWrite(pin_tx, HIGH);
-        delayMicroseconds(signals[sig].up_time);
+        //delayMicroseconds(signals[sig].up_time);
+        delay_us(signals[sig].up_time);
       }
       if (signals[sig].delay_time > 0) {
         digitalWrite(pin_tx, LOW);
-        delayMicroseconds(signals[sig].delay_time);
+        //delayMicroseconds(signals[sig].delay_time);
+        delay_us(signals[sig].delay_time);
       }
     }
   }
