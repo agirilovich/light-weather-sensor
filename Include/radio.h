@@ -10,7 +10,7 @@
 #define TX_POWER 13
 
 #define FRAME_LENGTH 8
-#define REPEATS 6
+#define REPEATS 7
 
 #include <SPI.h>
 #include <RadioLib.h>

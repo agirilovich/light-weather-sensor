@@ -29,14 +29,15 @@ SIGNAL Radio::signals[6] = {
   {SIG_IM_GAP, "IM_gap", 0, 10004},
   */
   {SIG_SYNC, "Sync", 833, 833},
-  {SIG_SYNC_GAP, "Sync-gap", 0, 168},
+  //{SIG_SYNC, "Sync", 744, 744},
+  {SIG_SYNC_GAP, "Sync-gap", 0, 625},
   {SIG_ZERO, "Zero", 417, 208},
-  //{SIG_ZERO, "Zero", 348, 348},
+  //{SIG_ZERO, "Zero", 500, 256},
   {SIG_ONE, "One", 208, 417},
-  //{SIG_ONE, "One", 136, 544},
+  //{SIG_ONE, "One", 256, 500},
   {SIG_IM_GAP, "IM_gap", 0, 1700},
-  //{SIG_IM_GAP, "IM_gap", 0, 100},
-  {SIG_PULSE, "Pulse", 512, 512}
+  //{SIG_IM_GAP, "IM_gap", 0, 1872},
+  {SIG_PULSE, "Pulse", 833, 833}
 };
 
 SPIClass* Radio::spi;
@@ -196,7 +197,7 @@ bool __attribute__((section(".RamFunc"))) Radio::tx() {
   }
 
   interrupts();
-  delayMicroseconds(400);
+  delay_us(400);
   standby();
   return true;
 }
@@ -231,11 +232,12 @@ void Radio::make_wave(uint8_t *msg, uint8_t msgLen)
       first = false;
     }
   }
+  insert(SIG_ONE);
 
   // Postamble of two SIG_SYNCs and IM_GAP
   // and terminal marker for safety
-  cmdList[listEnd++] = SIG_SYNC;
-  cmdList[listEnd++] = SIG_SYNC;
+  cmdList[listEnd++] = SIG_PULSE;
+  cmdList[listEnd++] = SIG_PULSE;
   cmdList[listEnd++] = SIG_IM_GAP;
   cmdList[listEnd] = NONE;
 }

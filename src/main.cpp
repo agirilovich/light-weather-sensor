@@ -59,6 +59,7 @@ void loop() {
   WeatherSensorRead();
 
   Radio::Transmit(flip_type);
+
   if (flip_type == 1)
   {
     flip_type = 2;
@@ -73,9 +74,9 @@ void loop() {
   {
       //Radio::sleep();
       //LowPower.deepSleep(24000);
-      delay(12000);
+      delay(5000);
   } else {
-      //Radio::standby();
+      Radio::standby();
       //LowPower.sleep(28000);
       delay(8000);
   }
