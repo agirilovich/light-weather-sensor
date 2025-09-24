@@ -1,0 +1,74 @@
+#include "lacrosse.h"
+#include "sensors.h"
+
+int LaCrosse::chanel=SENSOR_CHANEL;
+
+void __attribute__((section(".RamFunc"))) LaCrosse::EncodeFrame(uint8_t *frame, int message_type) {
+  //convert transmitter ID
+  int id = SENSOR_ID;
+  int test_mode = SENSOR_TEST_MODE;
+  
+  int temperatureValue = ActualData.temperature * 10 + 500;
+  int windValue = ActualData.wind * 10;
+  int pressureValue = ActualData.pressure;
+  int new_battery = 1;
+  
+  frame[0] = ((SENSOR_ID >> 16) | 0x08);
+  frame[1] = (SENSOR_ID & 0xFFFF) >> 8;
+  frame[2] = (SENSOR_ID & 0xFF);
+  frame[3] = (ActualData.low_battery << 7) | (test_mode << 6) | (chanel << 4) | (new_battery << 2) | (message_type) ;
+
+  
+  switch(message_type)
+  {
+    case MessageType::temperature:
+      frame[4] = temperatureValue >> 4;
+      frame[5] = ((temperatureValue & 0x0F) << 4) | (ActualData.humidity >> 8);
+      frame[6] = (ActualData.humidity & 0xFF);
+      break;
+
+    case MessageType::wind:
+      frame[4] = windValue >> 4;
+      frame[5] = ((windValue & 0x0F) << 4) | (pressureValue >> 8);
+      frame[6] = (pressureValue & 0xFF);
+      break;
+  
+    default:
+      //unknown subtype
+      break;
+  }
+  frame[7] = crc8(frame, 7, 0x31, 0x00);
+}
+
+
+//Calculate CRC function
+uint8_t __attribute__((section(".RamFunc"))) LaCrosse::crc8(uint8_t const *message, unsigned nBytes, uint8_t polynomial, uint8_t init)
+{
+    uint8_t remainder = init;
+    unsigned byte, bit;
+
+    for (byte = 0; byte < nBytes; ++byte) {
+        remainder ^= message[byte];
+        for (bit = 0; bit < 8; ++bit) {
+            if (remainder & 0x80) {
+                remainder = (remainder << 1) ^ polynomial;
+            } else {
+                remainder = (remainder << 1);
+            }
+        }
+    }
+    return remainder;
+}
+
+//Byte invert function
+void __attribute__((section(".RamFunc"))) LaCrosse::FrameInvert(uint8_t *frame)
+{
+  uint8_t *b = frame;
+
+  const unsigned last_col  = 8;
+  const unsigned last_bits = 0;
+  for (unsigned col = 0; col <= last_col; ++col) {
+    b[col] = ~b[col]; // Invert
+  }
+  b[last_col] ^= 0xFF >> last_bits; // Re-invert unused bits in last byte
+}
