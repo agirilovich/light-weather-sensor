@@ -19,24 +19,15 @@ int Radio::tx_repeats=REPEATS;
 float Radio::frequency=433.92;
 float Radio::bandwidth=250;
 float Radio::bitrate=9.6;
+bool first = true;
 
-SIGNAL_T Radio::cmdList[600];
+SIGNAL_T Radio::cmdList[1200];
 SIGNAL Radio::signals[6] = {
-  /*
-  {SIG_SYNC, "Sync", 712, 936},
-  {SIG_ZERO, "Zero", 348, 348},
-  {SIG_ONE, "One", 136, 544},
-  {SIG_IM_GAP, "IM_gap", 0, 10004},
-  */
-  {SIG_SYNC, "Sync", 833, 833},
-  //{SIG_SYNC, "Sync", 744, 744},
-  {SIG_SYNC_GAP, "Sync-gap", 0, 625},
-  {SIG_ZERO, "Zero", 417, 208},
-  //{SIG_ZERO, "Zero", 500, 256},
-  {SIG_ONE, "One", 208, 417},
-  //{SIG_ONE, "One", 256, 500},
-  {SIG_IM_GAP, "IM_gap", 0, 1700},
-  //{SIG_IM_GAP, "IM_gap", 0, 1872},
+  {SIG_SYNC, "Sync", 712, 712},
+  {SIG_SYNC_GAP, "Sync-gap", 1700, 712},
+  {SIG_ZERO, "Zero", 476, 220},
+  {SIG_ONE, "One", 220, 476},
+  {SIG_IM_GAP, "IM_gap", 0, 1450},
   {SIG_PULSE, "Pulse", 833, 833}
 };
 
@@ -142,32 +133,40 @@ bool __attribute__((section(".RamFunc"))) Radio::sleep() {
 }
 
 
-void __attribute__((section(".RamFunc"))) Radio::Transmit(uint8_t type)
+void __attribute__((section(".RamFunc"))) Radio::Transmit()
 {
-  uint8_t frame[FRAME_LENGTH];
+  uint8_t frame_1[FRAME_LENGTH];
+  uint8_t frame_2[FRAME_LENGTH];
   char MessageBuf[FRAME_LENGTH * 8];
-  LaCrosse::EncodeFrame(frame, type);
-  LaCrosse::FrameInvert(frame);
+  LaCrosse::EncodeFrame(frame_1, 1);
+  LaCrosse::FrameInvert(frame_1);
+  LaCrosse::EncodeFrame(frame_2, 2);
+  LaCrosse::FrameInvert(frame_2);
 
   #ifdef LOWPOWER_DEBUG
     sprintf(MessageBuf, "STM32Weather; %.2f C; %d %%; %.1f Pa; %.1f km/h; %d", ActualData.temperature, ActualData.humidity, ActualData.pressure, ActualData.wind, ActualData.low_battery);
     Serial.println(MessageBuf);
-    Serial.print("Encoded Frame:  ");
+    Serial.print("Encoded Frame 1:  ");
     for(int i = 0; i < FRAME_LENGTH; i++) {
-      Serial.print(frame[i]);
+      Serial.print(frame_1[i]);
       Serial.print(" ");
     }
     Serial.println("");
-    Serial.printf("Transmitting... Chanel: %d, Message type: %d \n", LaCrosse::chanel, type);
+    Serial.print("Encoded Frame 2:  ");
+    for(int i = 0; i < FRAME_LENGTH; i++) {
+      Serial.print(frame_2[i]);
+      Serial.print(" ");
+    }
+    Serial.println("");
+    Serial.printf("Transmitting... Chanel: %d \n", LaCrosse::chanel);
   #endif
 
-  make_wave(frame, FRAME_LENGTH * 8);
-   
+  make_wave(frame_1, frame_2, FRAME_LENGTH * 8);
   tx();
+  Serial.println("Done.");
 }
 
 bool __attribute__((section(".RamFunc"))) Radio::tx() {
-  delay(100);     // So INFO prints before we turn off interrupts
   RF69_Radio_Module->setOutputPower(tx_power, tx_high_power);
   RF69_Radio_Module->transmitDirect();
 
@@ -184,13 +183,11 @@ bool __attribute__((section(".RamFunc"))) Radio::tx() {
         return false;
       }
       if (signals[sig].up_time > 0) {
-        digitalWrite(pin_tx, HIGH);
-        //delayMicroseconds(signals[sig].up_time);
+        digitalWriteFast(digitalPinToPinName(pin_tx), HIGH);
         delay_us(signals[sig].up_time);
       }
       if (signals[sig].delay_time > 0) {
-        digitalWrite(pin_tx, LOW);
-        //delayMicroseconds(signals[sig].delay_time);
+        digitalWriteFast(digitalPinToPinName(pin_tx), LOW);
         delay_us(signals[sig].delay_time);
       }
     }
@@ -208,12 +205,10 @@ void Radio::insert(SIGNAL_T signal)
   return;
 }
 
-void Radio::make_wave(uint8_t *msg, uint8_t msgLen)
+void Radio::make_wave(uint8_t *msg_1, uint8_t *msg_2, uint8_t msgLen)
 {
   listEnd = 0;
-  bool first = true;
 
-  // Repeat preamble+data REPEAT times
   for (uint8_t j = 0; j < tx_repeats; j++)
   {
     // Preamble
@@ -224,20 +219,36 @@ void Radio::make_wave(uint8_t *msg, uint8_t msgLen)
 
     for (uint8_t i = 0; i < msgLen; i++)
     {
-      insert(((uint8_t)((msg[i / 8] >> (7 - (i % 8))) & 0x01)) == 0 ? SIG_ZERO : SIG_ONE);
+      insert(((uint8_t)((msg_1[i / 8] >> (7 - (i % 8))) & 0x01)) == 0 ? SIG_ZERO : SIG_ONE);
     }
-    if (first)
-    {
-      Serial.println();
-      first = false;
-    }
-  }
-  insert(SIG_ONE);
 
-  // Postamble of two SIG_SYNCs and IM_GAP
-  // and terminal marker for safety
-  cmdList[listEnd++] = SIG_PULSE;
-  cmdList[listEnd++] = SIG_PULSE;
+    insert(SIG_ONE);
+  }
+
+  insert(SIG_IM_GAP);
+
+  for (uint8_t j = 0; j < tx_repeats-2; j++)
+  {
+    // Preamble
+    insert(SIG_SYNC);
+    insert(SIG_SYNC);
+    insert(SIG_SYNC);
+    insert(SIG_SYNC);
+
+    for (uint8_t i = 0; i < msgLen; i++)
+    {
+      insert(((uint8_t)((msg_2[i / 8] >> (7 - (i % 8))) & 0x01)) == 0 ? SIG_ZERO : SIG_ONE);
+    }
+
+    if (j == 2)
+    {
+      insert(SIG_ZERO);
+    } else {
+      insert(SIG_ONE);
+    }
+    
+  }
+  
   cmdList[listEnd++] = SIG_IM_GAP;
   cmdList[listEnd] = NONE;
 }

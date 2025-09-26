@@ -12,8 +12,6 @@
 
 #define LED_PIN PC13
 
-int flip_type = 0;
-
 void setup() {
   // Debug console
   Serial.begin(115200);
@@ -58,14 +56,7 @@ void loop() {
   digitalWrite(LED_PIN, LOW);
   WeatherSensorRead();
 
-  Radio::Transmit(flip_type);
-
-  if (flip_type == 1)
-  {
-    flip_type = 2;
-  } else {
-    flip_type = 1;
-  }
+  Radio::Transmit();
 
   digitalWrite(LED_PIN, HIGH);
   IWatchdog.reload();

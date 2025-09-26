@@ -8,6 +8,8 @@ Few additional feautures that I implemented here:
 * Solar panel powering
 * Air pressure value is sent instead in a wind direction, since we don't have wind direction sensor in TX141W.
 
+TFA Dostmann 30.3222.02 is the same outdoor sensor.
+
 
 # Used modules
 
