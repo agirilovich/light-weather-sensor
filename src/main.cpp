@@ -63,12 +63,11 @@ void loop() {
   
   if (ActualData.low_battery = 1)
   {
-      //Radio::sleep();
-      //LowPower.deepSleep(24000);
-      delay(5000);
+      Radio::sleep();
+      //LowPower.deepSleep(28000);
+      LowPower.sleep(28000);
   } else {
       Radio::standby();
-      //LowPower.sleep(28000);
-      delay(8000);
+      LowPower.sleep(14000);
   }
 }

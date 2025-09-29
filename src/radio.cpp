@@ -27,7 +27,7 @@ SIGNAL Radio::signals[6] = {
   {SIG_SYNC_GAP, "Sync-gap", 1700, 712},
   {SIG_ZERO, "Zero", 476, 220},
   {SIG_ONE, "One", 220, 476},
-  {SIG_IM_GAP, "IM_gap", 0, 1450},
+  {SIG_IM_GAP, "IM_gap", 0, 1550},
   {SIG_PULSE, "Pulse", 833, 833}
 };
 
@@ -222,6 +222,13 @@ void Radio::make_wave(uint8_t *msg_1, uint8_t *msg_2, uint8_t msgLen)
       insert(((uint8_t)((msg_1[i / 8] >> (7 - (i % 8))) & 0x01)) == 0 ? SIG_ZERO : SIG_ONE);
     }
 
+    if ((j == 2 or j == 5) and first == false)
+    {
+      insert(SIG_ZERO);
+    } else {
+      insert(SIG_ONE);
+    }
+
     insert(SIG_ONE);
   }
 
@@ -240,7 +247,7 @@ void Radio::make_wave(uint8_t *msg_1, uint8_t *msg_2, uint8_t msgLen)
       insert(((uint8_t)((msg_2[i / 8] >> (7 - (i % 8))) & 0x01)) == 0 ? SIG_ZERO : SIG_ONE);
     }
 
-    if (j == 2)
+    if (j == 2 and first == true)
     {
       insert(SIG_ZERO);
     } else {
@@ -248,6 +255,7 @@ void Radio::make_wave(uint8_t *msg_1, uint8_t *msg_2, uint8_t msgLen)
     }
     
   }
+  first = false;
   
   cmdList[listEnd++] = SIG_IM_GAP;
   cmdList[listEnd] = NONE;
