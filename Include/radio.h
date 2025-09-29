@@ -40,8 +40,8 @@ class Radio {
         static bool RF69_init();
         static bool standby();
         static bool sleep();
-        static void Transmit(uint8_t type);
-        static SIGNAL_T cmdList[600];
+        static void Transmit();
+        static SIGNAL_T cmdList[1200];
         static SIGNAL signals[6];
 
     private:
@@ -67,6 +67,6 @@ class Radio {
 
         static uint16_t listEnd;
         static void insert(SIGNAL_T signal);
-        static void make_wave(uint8_t *msg, uint8_t msgLen);
+        static void make_wave(uint8_t *msg_1, uint8_t *msg_2, uint8_t msgLen);
         static bool tx();
 };

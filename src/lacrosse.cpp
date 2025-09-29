@@ -10,15 +10,13 @@ void __attribute__((section(".RamFunc"))) LaCrosse::EncodeFrame(uint8_t *frame, 
   
   int temperatureValue = ActualData.temperature * 10 + 500;
   int windValue = ActualData.wind * 10;
-  int pressureValue = ActualData.pressure;
-  int new_battery = 1;
+  int pressureValue = ActualData.pressure / 4;
   
   frame[0] = ((SENSOR_ID >> 16) | 0x08);
   frame[1] = (SENSOR_ID & 0xFFFF) >> 8;
   frame[2] = (SENSOR_ID & 0xFF);
-  frame[3] = (ActualData.low_battery << 7) | (test_mode << 6) | (chanel << 4) | (new_battery << 2) | (message_type) ;
+  frame[3] = (ActualData.low_battery << 7) | (test_mode << 6) | (chanel << 4) | (message_type);
 
-  
   switch(message_type)
   {
     case MessageType::temperature:
@@ -28,6 +26,7 @@ void __attribute__((section(".RamFunc"))) LaCrosse::EncodeFrame(uint8_t *frame, 
       break;
 
     case MessageType::wind:
+      pressureValue = 0;
       frame[4] = windValue >> 4;
       frame[5] = ((windValue & 0x0F) << 4) | (pressureValue >> 8);
       frame[6] = (pressureValue & 0xFF);
